@@ -1,0 +1,8 @@
+[package]
+name = "menu_bar_app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cacao = "0.3"
+objc = "0.2"
