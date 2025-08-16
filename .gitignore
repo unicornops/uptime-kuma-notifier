@@ -1,0 +1,72 @@
+# Aider files
+.aider*
+.aider.chat.history.md
+.aider.input.history
+
+# Configuration files (user-specific)
+config.toml
+
+# Rust build artifacts
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# Distribution and packaging
+/dist/
+*.dmg
+*.pkg
+*.app
+
+# Temporary files
+temp_icon.svg
+*.tmp
+*.temp
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python eggs (if any)
+.eggs/
+
+# Logs
+*.log
+logs/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Test artifacts
+test_connection
+test_connection.d
+uptime_kuma_notifier
+uptime_kuma_notifier.d

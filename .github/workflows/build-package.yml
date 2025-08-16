@@ -1,0 +1,125 @@
+name: Build and Package macOS App
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 0.1.0)'
+        required: true
+        default: '0.1.0'
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-apple-darwin, aarch64-apple-darwin
+          override: true
+          
+      - name: Install dependencies
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/install_dependencies.sh
+          
+      - name: Build and package
+        run: |
+          make package
+          
+      - name: Create DMG
+        run: |
+          make dmg
+          
+      - name: List artifacts
+        run: |
+          ls -la dist/
+          
+      - name: Upload app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-app-bundle
+          path: dist/Uptime Kuma Notifier.app/
+          retention-days: 30
+          
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg-installer
+          path: dist/*.dmg
+          retention-days: 30
+          
+      - name: Upload all artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-package-complete
+          path: dist/
+          retention-days: 30
+
+  # Optional: Code signing and notarization (requires secrets)
+  sign-and-notarize:
+    runs-on: macos-latest
+    needs: build
+    if: secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != ''
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Download app bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-app-bundle
+          path: dist/
+          
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          target: x86_64-apple-darwin, aarch64-apple-darwin
+          override: true
+          
+      - name: Install dependencies
+        run: |
+          chmod +x scripts/*.sh
+          ./scripts/install_dependencies.sh
+          
+      - name: Code sign
+        run: |
+          if [ -n "${{ secrets.CODE_SIGN_IDENTITY }}" ]; then
+            codesign --force --deep --sign "${{ secrets.CODE_SIGN_IDENTITY }}" "dist/Uptime Kuma Notifier.app"
+          elif [ -n "$(security find-identity -v -p codesigning | grep 'Developer ID Application')" ]; then
+            codesign --force --deep --sign "Developer ID Application" "dist/Uptime Kuma Notifier.app"
+          else
+            echo "No code signing identity found, skipping signing"
+          fi
+          
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+        run: |
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_ID_PASSWORD" ]; then
+            ./scripts/notarize.sh
+          else
+            echo "Apple ID credentials not provided, skipping notarization"
+          fi
+          
+      - name: Create signed DMG
+        run: |
+          make dmg
+          
+      - name: Upload signed artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-signed-package
+          path: dist/
+          retention-days: 30
