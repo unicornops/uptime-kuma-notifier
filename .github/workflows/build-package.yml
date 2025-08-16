@@ -67,7 +67,8 @@ jobs:
   sign-and-notarize:
     runs-on: macos-latest
     needs: build
-    if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != '' }}
+    env:
+      HAS_NOTARIZATION_SECRETS: ${{ secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != '' }}
 
     steps:
       - name: Checkout code
@@ -102,6 +103,7 @@ jobs:
           fi
 
       - name: Notarize
+        if: ${{ env.HAS_NOTARIZATION_SECRETS == 'true' }}
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -114,10 +116,12 @@ jobs:
           fi
 
       - name: Create signed DMG
+        if: ${{ env.HAS_NOTARIZATION_SECRETS == 'true' }}
         run: |
           make dmg
 
       - name: Upload signed artifacts
+        if: ${{ env.HAS_NOTARIZATION_SECRETS == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: macos-signed-package
