@@ -39,60 +39,14 @@ cargo run --release
 
 ## Configuration
 
-The app supports multiple ways to configure preferences:
+The app supports a simple way to configure preferences:
 
-### Option 1: Integrated Preferences Editor (Recommended)
-
-The app includes multiple user-friendly ways to access and edit preferences:
+### Integrated Preferences Editor
 
 #### **🖱️ Menu Bar Access**
 1. **Right-click** the menu bar icon
 2. **Select "Preferences..."** from the menu
 3. **Browser window opens** with a beautiful preferences interface
-
-#### **⌨️ Console Commands**
-- Type `p` + Enter to open the Preferences editor
-- Type `q` + Enter to quit the application
-
-#### **🌐 Web-Based Interface**
-When you access preferences, the app automatically:
-- Creates a beautiful HTML preferences page
-- Opens it in your default web browser
-- Shows current settings clearly
-- Provides multiple editing options
-
-**Features**:
-- **Visual Interface**: Clean, modern web-based preferences page
-- **Multiple Access Methods**: Menu bar, console commands, or direct file editing
-- **User-Friendly**: No need to remember keyboard shortcuts
-- **Professional**: Native macOS menu bar integration
-- **Flexible**: Multiple ways to edit preferences based on your preference
-
-### Option 2: Configuration File
-
-1. Copy the example configuration:
-```bash
-cp config.example.toml config.toml
-```
-
-2. Edit `config.toml` with your Uptime Kuma settings:
-```toml
-[uptime_kuma]
-url = "http://your-uptime-kuma-instance.com"
-api_key = "your-actual-api-key"
-update_interval = 30
-timeout = 10
-```
-
-### Option 2: Hardcoded Configuration
-
-If you prefer to hardcode the configuration, edit `src/main.rs` and update these lines:
-
-```rust
-// Hardcoded Uptime Kuma configuration
-let api_url = "http://localhost:3001"; // Change this to your Uptime Kuma URL
-let api_key = "your-api-key-here"; // Change this to your actual API key
-```
 
 ### Getting Your API Key
 
@@ -107,7 +61,7 @@ The application uses the **Metrics Endpoint** (`/metrics`):
 - **Endpoint**: `/metrics`
 - **Authentication**: HTTP Basic Auth with API key as password (recommended method)
 - **Response Format**: Prometheus metrics format
-- **Advantages**: 
+- **Advantages**:
   - More reliable than other endpoints
   - Provides real-time monitor status
   - Standard Prometheus format
@@ -134,11 +88,6 @@ cargo run
 
 - **Preferences...**: Opens a beautiful web-based preferences editor in your browser
 - **Quit**: Closes the application
-
-### ⌨️ Console Commands (Alternative)
-
-- Type `p` + Enter to open Preferences
-- Type `q` + Enter to Quit
 
 ### 🎯 User-Friendly Features
 
