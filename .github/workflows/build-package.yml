@@ -65,8 +65,14 @@ jobs:
 
   # Optional: Code signing and notarization (requires secrets)
   sign-and-notarize:
+    if: ${{ secrets.APPLE_ID && secrets.APPLE_ID_PASSWORD }}
     runs-on: macos-latest
     needs: build
+    env:
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
+      CODE_SIGN_IDENTITY: ${{ secrets.CODE_SIGN_IDENTITY }}
 
     steps:
       - name: Checkout code
@@ -92,34 +98,24 @@ jobs:
 
       - name: Code sign
         run: |
-          if [ -n "${{ secrets.CODE_SIGN_IDENTITY }}" ]; then
-            codesign --force --deep --sign "${{ secrets.CODE_SIGN_IDENTITY }}" "dist/Uptime Kuma Notifier.app"
-          elif [ -n "$(security find-identity -v -p codesigning | grep 'Developer ID Application')" ]; then
+          if [ -n "$CODE_SIGN_IDENTITY" ]; then
+            codesign --force --deep --sign "$CODE_SIGN_IDENTITY" "dist/Uptime Kuma Notifier.app"
+          elif security find-identity -v -p codesigning | grep -q 'Developer ID Application'; then
             codesign --force --deep --sign "Developer ID Application" "dist/Uptime Kuma Notifier.app"
           else
             echo "No code signing identity found, skipping signing"
           fi
 
       - name: Notarize
-        if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != '' }}
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
-          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_ID_PASSWORD" ]; then
-            ./scripts/notarize.sh
-          else
-            echo "Apple ID credentials not provided, skipping notarization"
-          fi
+          echo "Submitting for notarization..."
+          ./scripts/notarize.sh
 
       - name: Create signed DMG
-        if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != '' }}
         run: |
           make dmg
 
       - name: Upload signed artifacts
-        if: ${{ secrets.APPLE_ID != '' && secrets.APPLE_ID_PASSWORD != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: macos-signed-package
