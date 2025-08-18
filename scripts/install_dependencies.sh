@@ -21,7 +21,7 @@ fi
 if ! command -v brew &> /dev/null; then
     echo -e "${YELLOW}🍺 Homebrew not found. Installing...${NC}"
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    
+
     # Add Homebrew to PATH if needed
     if [[ -f "/opt/homebrew/bin/brew" ]]; then
         echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
@@ -34,9 +34,16 @@ else
     echo -e "${GREEN}✅ Homebrew already installed${NC}"
 fi
 
-# Update Homebrew
-echo -e "${YELLOW}🔄 Updating Homebrew...${NC}"
-brew update
+# Update Homebrew (skipped in CI or when HOMEBREW_NO_AUTO_UPDATE set)
+if [ -n "${CI:-}" ]; then
+    echo -e "${YELLOW}⚡ Skipping Homebrew update in CI (HOMEBREW_NO_AUTO_UPDATE=1)${NC}"
+    export HOMEBREW_NO_AUTO_UPDATE=1
+elif [ -n "${HOMEBREW_NO_AUTO_UPDATE:-}" ]; then
+    echo -e "${YELLOW}⚡ Skipping Homebrew update because HOMEBREW_NO_AUTO_UPDATE is set${NC}"
+else
+    echo -e "${YELLOW}🔄 Updating Homebrew...${NC}"
+    brew update
+fi
 
 # Install Rust if not present
 if ! command -v rustc &> /dev/null; then

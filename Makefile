@@ -1,7 +1,7 @@
 # Makefile for Uptime Kuma Notifier macOS Package
 # This Makefile provides convenient commands for building and packaging
 
-.PHONY: help build clean package dmg notarize install release
+.PHONY: help build universal clean package dmg notarize install release
 
 # Configuration
 APP_NAME = "Uptime Kuma Notifier"
@@ -15,14 +15,15 @@ help:
 	@echo "Uptime Kuma Notifier - macOS Package Build System"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  build     - Build the Rust application"
-	@echo "  clean     - Clean build artifacts"
-	@echo "  package   - Create macOS app bundle"
-	@echo "  dmg       - Create DMG installer"
-	@echo "  notarize  - Notarize the app for distribution"
-	@echo "  install   - Install to Applications folder"
-	@echo "  release   - Full release build with DMG"
-	@echo "  help      - Show this help message"
+	@echo "  build      - Build the Rust application (host architecture only)"
+	@echo "  universal  - Build universal (x86_64 + arm64) binary only"
+	@echo "  clean      - Clean build artifacts"
+	@echo "  package    - Create macOS app bundle"
+	@echo "  dmg        - Create DMG installer"
+	@echo "  notarize   - Notarize the app for distribution"
+	@echo "  install    - Install to Applications folder"
+	@echo "  release    - Full release build with DMG"
+	@echo "  help       - Show this help message"
 	@echo ""
 	@echo "Environment variables:"
 	@echo "  CODE_SIGN_IDENTITY - Code signing identity"
@@ -44,7 +45,7 @@ clean:
 	@echo "✅ Clean complete"
 
 # Create macOS app bundle
-package: build
+package:
 	@echo "📦 Creating macOS app bundle..."
 	@chmod +x scripts/build_package.sh
 	./scripts/build_package.sh
@@ -113,6 +114,18 @@ info:
 	@echo "  Name: $(APP_NAME)"
 	@echo "  Version: $(VERSION)"
 	@echo "  Rust Edition: $(shell grep 'edition' Cargo.toml | cut -d'"' -f2)"
-	@echo "  Target: $(shell rustc --print target-list | grep apple-darwin | head -1)"
+	@echo "  Default Host Target: $(shell rustc -vV | grep 'host:' | awk '{print $$2}')"
+	@echo "  Universal Binary: $(UNIVERSAL_BINARY)"
 	@echo "  Cargo Version: $(shell cargo --version)"
 	@echo "  Rust Version: $(shell rustc --version)"
+
+# Build universal (fat) binary without packaging
+universal:
+	@echo "🎯 Building universal binary (x86_64 + arm64)..."
+	@for arch in $(ARCHS); do \
+		echo "   -> $$arch"; \
+		$(CARGO) build --release --target $$arch; \
+	done
+	@mkdir -p $(UNIVERSAL_DIR)
+	@lipo -create $(foreach arch,$(ARCHS),target/$(arch)/release/uptime_kuma_notifier) -output $(UNIVERSAL_BINARY)
+	@echo "✅ Universal binary ready: $(UNIVERSAL_BINARY)"

@@ -18,26 +18,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Cache cargo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
-
           override: true
-
       - name: Install dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          CI: "true"
         run: |
           chmod +x scripts/*.sh
           ./scripts/install_dependencies.sh
-
-      - name: Build and package
-        run: |
-          make package
-
-      - name: Create DMG
+      - name: Build universal + DMG
+        env:
+          CI: "true"
         run: |
           make dmg
-
       - name: List artifacts
         run: |
           ls -la dist/
@@ -84,17 +90,7 @@ jobs:
           name: macos-app-bundle
           path: dist/
 
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-
-          override: true
-
-      - name: Install dependencies
-        run: |
-          chmod +x scripts/*.sh
-          ./scripts/install_dependencies.sh
+      # Skipping Rust toolchain & dependency installation (reusing built artifact)
 
       - name: Code sign
         run: |
@@ -115,7 +111,7 @@ jobs:
       - name: Create signed DMG
         if: ${{ env.APPLE_ID && env.APPLE_ID_PASSWORD }}
         run: |
-          make dmg
+          hdiutil create -volname "Uptime Kuma Notifier" -srcfolder "dist/Uptime Kuma Notifier.app" -ov -format UDZO "dist/Uptime_Kuma_Notifier-signed.dmg"
 
       - name: Upload signed artifacts
         if: ${{ env.APPLE_ID && env.APPLE_ID_PASSWORD }}
