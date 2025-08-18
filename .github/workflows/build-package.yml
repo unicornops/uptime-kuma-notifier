@@ -27,11 +27,16 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+      - name: Install Rust targets
+        run: |
+          echo "Rust version:"
+          rustc -V || true
+          echo "Cargo version:"
+            cargo -V || true
+          echo "Adding required targets (ignore if already installed)..."
+          rustup target add x86_64-apple-darwin aarch64-apple-darwin || true
+          echo "Installed targets:"
+          rustup target list --installed || true
       - name: Install dependencies
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
