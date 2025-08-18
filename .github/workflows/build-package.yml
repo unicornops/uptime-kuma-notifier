@@ -12,7 +12,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Checkout code
@@ -94,7 +94,7 @@ jobs:
   # Optional: Code signing and notarization (requires secrets)
   sign-and-notarize:
     # conditional removed; steps use env.APPLE_ID gating
-    runs-on: macos-latest
+    runs-on: macos-15
     needs: build
     env:
       APPLE_ID: ${{ secrets.APPLE_ID }}
