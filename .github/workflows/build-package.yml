@@ -44,6 +44,23 @@ jobs:
           CI: "true"
         run: |
           make dmg
+          echo "Sanitizing DMG filenames..."
+          for f in dist/*.dmg; do
+            [ -e "$f" ] || continue
+            sanitized="$f"
+            # Remove any double quotes
+            sanitized="${sanitized//\"/}"
+            # Remove accidental literal 'version = ' fragments
+            sanitized="${sanitized//version = /}"
+            # Collapse any doubled dashes created by removals
+            sanitized="$(echo "$sanitized" | sed -E 's/--+/-/g')"
+            if [ "$f" != "$sanitized" ]; then
+              echo "Renaming $f -> $sanitized"
+              mv "$f" "$sanitized"
+            fi
+          done
+          echo "Resulting DMG files:"
+          ls -la dist/*.dmg || ls -la dist/
       - name: List artifacts
         run: |
           ls -la dist/

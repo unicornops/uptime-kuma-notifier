@@ -4,7 +4,7 @@
 .PHONY: help build universal clean package dmg notarize install release
 
 # Configuration
-APP_NAME = "Uptime Kuma Notifier"
+APP_NAME = Uptime Kuma Notifier
 VERSION = 0.1.0
 BUILD_DIR = target/release
 DIST_DIR = dist
