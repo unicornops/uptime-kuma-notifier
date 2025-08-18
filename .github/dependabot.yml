@@ -1,0 +1,54 @@
+# Dependabot configuration
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+version: 2
+
+updates:
+  # Keep Rust (Cargo) dependencies up to date
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      # Daily so you get fixes quickly, but you can change to weekly if noisy
+      interval: "daily"
+      time: "05:00"
+      timezone: "UTC"
+    # Limit concurrent PRs to avoid overload
+    open-pull-requests-limit: 10
+    # Group to reduce noise: production vs dev-only deps
+    groups:
+      cargo-runtime:
+        dependency-type: "production"
+      cargo-dev:
+        dependency-type: "development"
+    # Customize commit messages
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    # Allow all (direct + transitive) so security fixes surface
+    allow:
+      - dependency-type: "direct"
+      - dependency-type: "indirect"
+    # Enable rebase when base branch moves
+    rebase-strategy: "auto"
+
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "sunday"
+      time: "05:30"
+      timezone: "UTC"
+    open-pull-requests-limit: 5
+    groups:
+      gh-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore"
+      prefix-development: "chore"
+      include: "scope"
+    rebase-strategy: "auto"
+# Notes:
+# - If you want security-only PRs separated, you can add a group with update-types: ["security"].
+# - Adjust times to align with lowest activity period for minimal disruption.
