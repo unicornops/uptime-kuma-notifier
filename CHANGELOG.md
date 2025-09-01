@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.0 - 2025-09-01
+#### Features
+- Improve the README, point to using make. - (2d841f5) - Rob Lazzurs
+
+- - -
+
 ## v0.1.0 - 2025-09-01
 #### Features
 - Initial commit - (0af7375) - Rob Lazzurs
