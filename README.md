@@ -2,6 +2,8 @@
 
 A macOS menu bar application that displays the number of services that are up and down in your Uptime Kuma instance.
 
+Important: We recommend using the provided `Makefile` for common workflows (building, packaging, testing, releasing). The `Makefile` encapsulates platform-specific details, packaging steps, code signing, and notarization. Use `make` targets rather than calling `cargo` directly unless you know what you need to do.
+
 ## Features
 
 - Shows real-time status of your Uptime Kuma monitors in the macOS menu bar
@@ -15,6 +17,7 @@ A macOS menu bar application that displays the number of services that are up an
 
 - macOS (tested on macOS 14+)
 - Rust toolchain (cargo, rustc)
+- Xcode command line tools (for codesign, lipo, etc.)
 - Uptime Kuma instance running and accessible
 
 ## Installation
@@ -27,15 +30,49 @@ cd uptime-kuma-notify
 
 2. Configure the application (see Configuration section below)
 
-3. Build the application:
+3. Build and package using the `Makefile` (recommended):
+
+- Build the Rust binary (release):
 ```bash
-cargo build --release
+make build
 ```
 
-4. Run the application:
+- Create a macOS `.app` bundle:
 ```bash
-cargo run --release
+make package
 ```
+
+- Create a DMG installer (builds package first):
+```bash
+make dmg
+```
+
+- Full release build (clean, package, dmg):
+```bash
+make release
+```
+
+Why use `make`?
+- The `Makefile` runs the correct `cargo` commands, sets expected environment variables, and invokes packaging scripts.
+- Packaging, codesigning, and notarization are handled for you by targets like `package`, `notarize`, and `dmg`.
+- It provides convenient shortcuts for development and release workflows (e.g. `make check`, `make fmt`, `make test`).
+
+If you only want to run the app locally without packaging:
+- After `make build`, run the release binary directly:
+```bash
+./target/release/uptime_kuma_notifier
+```
+Note: The binary name may vary based on build scripts; check `target/release` for the exact filename.
+
+If you prefer `cargo` for quick development builds, you can still run:
+```bash
+# Quick debug build
+cargo build
+
+# Run directly (development)
+cargo run
+```
+But for packaging, distribution, and reproducible release builds prefer `make`.
 
 ## Configuration
 
@@ -43,77 +80,111 @@ The app supports a simple way to configure preferences:
 
 ### Integrated Preferences Editor
 
-#### **🖱️ Menu Bar Access**
-1. **Right-click** the menu bar icon
-2. **Select "Preferences..."** from the menu
-3. **Browser window opens** with a beautiful preferences interface
+#### 🖱️ Menu Bar Access
+1. **Right-click** the menu bar icon  
+2. **Select "Preferences..."** from the menu  
+3. **A browser window opens** with a preferences interface
 
 ### Getting Your API Key
 
-1. In your Uptime Kuma instance, go to Settings → API Keys
-2. Create a new API key with appropriate permissions
+1. In your Uptime Kuma instance, go to Settings → API Keys  
+2. Create a new API key with appropriate permissions  
 3. Copy the API key and update your configuration
 
 ### API Endpoint
 
 The application uses the **Metrics Endpoint** (`/metrics`):
 
-- **Endpoint**: `/metrics`
-- **Authentication**: HTTP Basic Auth with API key as password (recommended method)
-- **Response Format**: Prometheus metrics format
+- **Endpoint**: `/metrics`  
+- **Authentication**: HTTP Basic Auth with API key as password (recommended method)  
+- **Response Format**: Prometheus metrics format  
 - **Advantages**:
   - More reliable than other endpoints
   - Provides real-time monitor status
   - Standard Prometheus format
   - Includes all monitor information
 
-**Note**: The metrics endpoint requires HTTP Basic Authentication where:
+Note: The metrics endpoint requires HTTP Basic Authentication where:
 - Username: (empty string)
 - Password: Your API key
 
 ## Usage
 
-1. **Start the application**:
+1. Start the application:
 ```bash
+# Recommended: build with make then run binary
+make build
+./target/release/uptime_kuma_notifier
+
+# Or for development
 cargo run
 ```
 
-2. **You'll see a new icon in your macOS menu bar** showing your Uptime Kuma status
-3. **The icon displays**: "✅ X 🔴 Y" (X = up monitors, Y = down monitors)
-4. **Status updates automatically** based on your refresh interval
+2. You'll see a new icon in your macOS menu bar showing your Uptime Kuma status  
+3. The icon displays: "✅ X 🔴 Y" (X = up monitors, Y = down monitors)  
+4. Status updates automatically based on your refresh interval
 
 ### 🖱️ Menu Bar Interface
 
-**Right-click the menu bar icon** for these options:
+Right-click the menu bar icon for these options:
 
-- **Preferences...**: Opens a beautiful web-based preferences editor in your browser
+- **Preferences...**: Opens a web-based preferences editor in your browser  
 - **Quit**: Closes the application
 
 ### 🎯 User-Friendly Features
 
-- **Visual Preferences**: Clean, modern web interface - no need to edit config files
-- **Multiple Access Methods**: Menu bar clicks or console shortcuts
-- **Professional Interface**: Native macOS menu bar integration
+- **Visual Preferences**: Clean, modern web interface - no need to edit config files  
+- **Multiple Access Methods**: Menu bar clicks or console shortcuts  
+- **Professional Interface**: Native macOS menu bar integration  
 - **Real-time Updates**: Status displays current monitor counts automatically
 
 ## Development
 
 ### Project Structure
 
-- `src/main.rs` - Main application code
-- `Cargo.toml` - Dependencies and project configuration
+- `src/main.rs` - Main application code  
+- `Cargo.toml` - Dependencies and project configuration  
 - `config.example.toml` - Example configuration file
 
 ### Dependencies
 
-- `cacao` - macOS app framework
-- `objc2` - Objective-C runtime bindings
-- `reqwest` - HTTP client for API requests
-- `serde` - JSON serialization/deserialization
+- `cacao` - macOS app framework  
+- `objc2` - Objective-C runtime bindings  
+- `reqwest` - HTTP client for API requests  
+- `serde` - JSON serialization/deserialization  
 - `tokio` - Async runtime
 
-### Building
+### Building & Common Tasks (use `Makefile`)
 
+Prefer `make` targets for standard tasks. The `Makefile` includes helpful targets:
+
+- `make help` — Show available targets and usage info  
+- `make build` — Build the Rust application (release by default)  
+- `make dev` — Development build (non-release)  
+- `make clean` — Clean build artifacts and dist directory  
+- `make package` — Create macOS app bundle (.app)  
+- `make dmg` — Create a DMG installer (depends on `package`)  
+- `make notarize` — Notarize the app (requires Apple credentials)  
+- `make install` — Install the built app to `/Applications`  
+- `make release` — Full release flow (clean + package + dmg)  
+- `make test` — Run tests  
+- `make check` — Run `cargo check` and `cargo clippy`  
+- `make fmt` — Run `cargo fmt`  
+- `make update` — Update dependencies (`cargo update`)
+
+Examples:
+```bash
+# Build and create an app bundle
+make package
+
+# Create a DMG for distribution
+make dmg
+
+# Prepare a release build (clean + package + dmg)
+make release
+```
+
+Advanced: If you must use `cargo` directly for experimentation:
 ```bash
 # Debug build
 cargo build
@@ -124,22 +195,23 @@ cargo build --release
 # Run tests
 cargo test
 
-# Check for issues
+# Code checks
 cargo check
+cargo clippy
 ```
+But note: packaging, codesigning, and notarization are handled by the `Makefile` and accompanying scripts — using `cargo` alone won't produce an installable macOS app.
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **API Connection Failed**: Check your Uptime Kuma URL and ensure it's accessible
-2. **Authentication Failed**: Verify your API key is correct and has proper permissions
+1. **API Connection Failed**: Check your Uptime Kuma URL and ensure it's accessible  
+2. **Authentication Failed**: Verify your API key is correct and has proper permissions  
 3. **No Status Updates**: Check the console output for error messages
 
 ### Debug Mode
 
 Run with debug output to see detailed information:
-
 ```bash
 RUST_LOG=debug cargo run
 ```
@@ -150,7 +222,7 @@ The application prints status updates to the console. You can view these in Cons
 
 ## API Response Format
 
-The application now uses the Uptime Kuma metrics endpoint which returns Prometheus-formatted metrics:
+The application uses the Uptime Kuma metrics endpoint which returns Prometheus-formatted metrics:
 
 ```
 # HELP uptime_kuma_monitor_status Current status of monitors
@@ -160,17 +232,19 @@ uptime_kuma_monitor_status{monitor="another_monitor"} 0
 ```
 
 Where:
-- `1` = Monitor is UP
-- `0` = Monitor is DOWN
+- `1` = Monitor is UP  
+- `0` = Monitor is DOWN  
 - Other values = Pending, Maintenance, or other statuses
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
+1. Fork the repository  
+2. Create a feature branch  
+3. Make your changes  
+4. Add tests if applicable  
 5. Submit a pull request
+
+Please follow existing code style and run `make fmt` and `make check` before opening a PR.
 
 ## License
 
@@ -179,6 +253,7 @@ This project is licensed under the [MIT License](./LICENSE).
 ## Support
 
 For issues and questions:
-1. Check the troubleshooting section
-2. Review the console output for error messages
+
+1. Check the troubleshooting section  
+2. Review the console output for error messages  
 3. Open an issue on GitHub with detailed information about your setup
