@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.4.0 - 2025-09-01
+#### Features
+- Testing code signing in the build - (554e116) - Rob Lazzurs
+
+- - -
+
 ## v0.3.0 - 2025-09-01
 #### Features
 - Improve the Makefile adding help - (88c1d43) - Rob Lazzurs
