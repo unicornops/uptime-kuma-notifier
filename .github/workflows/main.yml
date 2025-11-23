@@ -28,12 +28,12 @@ jobs:
       release_tag: ${{ steps.release.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Check for conventional commits
-        uses: cocogitto/cocogitto-action@v3.8
+        uses: cocogitto/cocogitto-action@v4
 
       - name: Get next version
         id: next_version
@@ -42,7 +42,7 @@ jobs:
 
       - name: Cocogitto tag
         id: release
-        uses: cocogitto/cocogitto-action@v3
+        uses: cocogitto/cocogitto-action@v4
         with:
           check-latest-tag-only: true
           release: true
@@ -65,7 +65,7 @@ jobs:
     needs: tag-release
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Cache cargo
         uses: actions/cache@v4
@@ -136,21 +136,21 @@ jobs:
           ls -la dist/ || true
 
       - name: Upload app bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-app-bundle
           path: dist/*.app
           retention-days: 30
 
       - name: Upload DMG
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-dmg-installer
           path: dist/*.dmg
           retention-days: 30
 
       - name: Upload all artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-package-complete
           path: dist/
@@ -170,10 +170,10 @@ jobs:
       KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Download app bundle
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: macos-app-bundle
           path: dist/
@@ -280,7 +280,7 @@ jobs:
 
       - name: Upload signed artifacts
         if: ${{ env.APPLE_ID && env.APPLE_ID_PASSWORD }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: macos-signed-package
           path: dist/
@@ -312,7 +312,7 @@ jobs:
     if: ${{ needs.tag-release.outputs.release_tag != '' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
 
       - name: Set env
         run: |
@@ -321,13 +321,13 @@ jobs:
         shell: bash
 
       - name: Download package artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: macos-package-complete
           path: dist/
 
       - name: Also download signed artifacts (if any)
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           name: macos-signed-package
           path: dist/
