@@ -3,32 +3,25 @@
 version: 2
 
 updates:
-  # Keep Rust (Cargo) dependencies up to date
-  - package-ecosystem: "cargo"
+  # Keep Swift (SPM) dependencies up to date
+  - package-ecosystem: "swift"
     directory: "/"
     schedule:
-      # Daily so you get fixes quickly, but you can change to weekly if noisy
       interval: "daily"
       time: "05:00"
       timezone: "UTC"
-    # Limit concurrent PRs to avoid overload
     open-pull-requests-limit: 10
-    # Group to reduce noise: production vs dev-only deps
     groups:
-      cargo-runtime:
-        dependency-type: "production"
-      cargo-dev:
-        dependency-type: "development"
-    # Customize commit messages
+      swift-dependencies:
+        patterns:
+          - "*"
     commit-message:
       prefix: "chore"
       prefix-development: "chore"
       include: "scope"
-    # Allow all (direct + transitive) so security fixes surface
     allow:
       - dependency-type: "direct"
       - dependency-type: "indirect"
-    # Enable rebase when base branch moves
     rebase-strategy: "auto"
 
   # Keep GitHub Actions up to date
