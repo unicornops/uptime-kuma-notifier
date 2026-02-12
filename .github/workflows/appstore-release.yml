@@ -1,0 +1,263 @@
+name: App Store Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release (e.g., 1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  packages: read
+
+jobs:
+  appstore-build:
+    name: Build for App Store
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show build environment
+        run: |
+          echo "Xcode version:"
+          xcodebuild -version
+          echo ""
+          echo "Swift version:"
+          swift --version
+          echo ""
+          echo "macOS version:"
+          sw_vers
+
+      - name: Set version
+        id: version
+        run: |
+          VERSION="${{ inputs.version }}"
+          VERSION="${VERSION#v}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_number=${{ github.run_number }}" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION (build ${{ github.run_number }})"
+
+      - name: Validate entitlements
+        run: |
+          echo "Validating App Store entitlements..."
+          ENTITLEMENTS_FILE="UptimeKumaNotifier.entitlements"
+
+          if [ ! -f "$ENTITLEMENTS_FILE" ]; then
+            echo "Entitlements file not found: $ENTITLEMENTS_FILE"
+            exit 1
+          fi
+
+          if ! /usr/libexec/PlistBuddy -c "Print :com.apple.security.app-sandbox" "$ENTITLEMENTS_FILE" 2>/dev/null | grep -q "true"; then
+            echo "App sandbox must be enabled for App Store"
+            exit 1
+          fi
+          echo "App sandbox is enabled"
+
+          if ! /usr/libexec/PlistBuddy -c "Print :com.apple.security.network.client" "$ENTITLEMENTS_FILE" 2>/dev/null | grep -q "true"; then
+            echo "Network client entitlement must be enabled"
+            exit 1
+          fi
+          echo "Network client entitlement is enabled"
+
+          echo "All entitlements valid for App Store submission"
+
+      - name: Build release binary
+        run: swift build -c release
+
+      - name: Setup App Store code signing
+        env:
+          APP_CERTIFICATE_BASE64: ${{ secrets.APPSTORE_CERTIFICATE_BASE64 }}
+          INSTALLER_CERTIFICATE_BASE64: ${{ secrets.APPSTORE_INSTALLER_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPSTORE_CERTIFICATE_PASSWORD }}
+          PROVISIONING_PROFILE_BASE64: ${{ secrets.APPSTORE_PROVISIONING_PROFILE_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          KEYCHAIN_NAME="appstore.keychain"
+          KEYCHAIN_PASSWORD="temporary_password_$(uuidgen)"
+
+          echo "Creating temporary keychain..."
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          security set-keychain-settings "$KEYCHAIN_NAME"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+          security list-keychains -d user -s "$KEYCHAIN_NAME" $(security list-keychains -d user | sed s/\"//g)
+
+          echo "Importing App Store application certificate..."
+          APP_CERT_PATH=$RUNNER_TEMP/appstore_app.p12
+          echo "$APP_CERTIFICATE_BASE64" | base64 --decode > "$APP_CERT_PATH"
+
+          security import "$APP_CERT_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_NAME" \
+            -T /usr/bin/codesign \
+            -T /usr/bin/security
+
+          echo "Importing App Store installer certificate..."
+          INSTALLER_CERT_PATH=$RUNNER_TEMP/appstore_installer.p12
+          echo "$INSTALLER_CERTIFICATE_BASE64" | base64 --decode > "$INSTALLER_CERT_PATH"
+
+          security import "$INSTALLER_CERT_PATH" \
+            -P "$CERTIFICATE_PASSWORD" \
+            -A \
+            -t cert \
+            -f pkcs12 \
+            -k "$KEYCHAIN_NAME" \
+            -T /usr/bin/productbuild \
+            -T /usr/bin/security
+
+          security set-key-partition-list -S apple-tool:,apple:,codesign:,productbuild: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+
+          echo "Installing provisioning profile..."
+          PROFILE_PATH=$RUNNER_TEMP/appstore.provisionprofile
+          echo "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
+
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print UUID" /dev/stdin <<< $(/usr/bin/security cms -D -i "$PROFILE_PATH"))
+          echo "Provisioning profile UUID: $PROFILE_UUID"
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".provisionprofile
+
+          echo "Installed codesigning certificates:"
+          security find-identity -v -p codesigning "$KEYCHAIN_NAME"
+
+          echo ""
+          echo "All installed identities:"
+          security find-identity -v "$KEYCHAIN_NAME"
+
+          APP_IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN_NAME" | grep "3rd Party Mac Developer Application" | head -1 | sed -n 's/.*"\(.*\)"/\1/p')
+          INSTALLER_IDENTITY=$(security find-identity -v "$KEYCHAIN_NAME" | grep "3rd Party Mac Developer Installer" | head -1 | sed -n 's/.*"\(.*\)"/\1/p')
+
+          if [ -z "$INSTALLER_IDENTITY" ]; then
+            INSTALLER_IDENTITY=$(security find-identity -v "$KEYCHAIN_NAME" | grep "Mac Installer Distribution" | head -1 | sed -n 's/.*"\(.*\)"/\1/p')
+          fi
+
+          if [ -z "$APP_IDENTITY" ]; then
+            echo "App Store Application certificate not found"
+            exit 1
+          fi
+
+          if [ -z "$INSTALLER_IDENTITY" ]; then
+            echo "App Store Installer certificate not found"
+            exit 1
+          fi
+
+          echo "APP_SIGNING_IDENTITY=$APP_IDENTITY" >> $GITHUB_ENV
+          echo "INSTALLER_SIGNING_IDENTITY=$INSTALLER_IDENTITY" >> $GITHUB_ENV
+          echo "KEYCHAIN_NAME=$KEYCHAIN_NAME" >> $GITHUB_ENV
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
+
+          echo "App Store code signing certificates installed"
+
+      - name: Create and sign app bundle
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+          APP_DIR="dist/UptimeKumaNotifier.app"
+
+          mkdir -p "$APP_DIR/Contents/MacOS"
+          mkdir -p "$APP_DIR/Contents/Resources"
+
+          cp .build/release/UptimeKumaNotifier "$APP_DIR/Contents/MacOS/"
+          cp Info.plist "$APP_DIR/Contents/"
+
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP_DIR/Contents/Info.plist"
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP_DIR/Contents/Info.plist"
+
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+
+          codesign --force --deep --timestamp \
+            --entitlements UptimeKumaNotifier.entitlements \
+            --sign "$APP_SIGNING_IDENTITY" \
+            --keychain "$KEYCHAIN_NAME" \
+            "$APP_DIR"
+
+          echo "Verifying code signature..."
+          codesign -vvv --deep --strict "$APP_DIR"
+
+      - name: Create installer package
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          BUNDLE_ID: ${{ vars.BUNDLE_ID || 'com.unicornops.uptime-kuma-notifier' }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PKG_NAME="UptimeKumaNotifier-${VERSION}.pkg"
+
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_NAME"
+
+          productbuild \
+            --component dist/UptimeKumaNotifier.app /Applications \
+            --sign "$INSTALLER_SIGNING_IDENTITY" \
+            --keychain "$KEYCHAIN_NAME" \
+            "dist/${PKG_NAME}"
+
+          echo "pkg_name=${PKG_NAME}" >> $GITHUB_ENV
+          echo "Package created: dist/${PKG_NAME}"
+
+      - name: Verify package
+        run: |
+          echo "Verifying package signature..."
+          pkgutil --check-signature "dist/${{ env.pkg_name }}"
+
+      - name: Upload to App Store Connect
+        env:
+          APPLE_USERNAME: ${{ secrets.APPLE_DEVELOPER_ID }}
+          APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          echo "Uploading to App Store Connect..."
+          xcrun altool --upload-app \
+            -f "dist/${{ env.pkg_name }}" \
+            -t macos \
+            -u "$APPLE_USERNAME" \
+            -p "@env:APP_SPECIFIC_PASSWORD" \
+            --team-id "$TEAM_ID" \
+            --verbose
+
+          echo "Upload complete!"
+          echo ""
+          echo "Next steps:"
+          echo "1. Go to App Store Connect: https://appstoreconnect.apple.com"
+          echo "2. Navigate to your app"
+          echo "3. Add build to your release"
+          echo "4. Submit for review"
+
+      - name: Cleanup certificates
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN_NAME:-}" ]; then
+            security delete-keychain "$KEYCHAIN_NAME" 2>/dev/null || true
+          fi
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: appstore-build-${{ steps.version.outputs.version }}
+          path: |
+            dist/${{ env.pkg_name }}
+          retention-days: 30
+
+      - name: Build summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          BUILD_NUMBER="${{ steps.version.outputs.build_number }}"
+
+          echo "## App Store Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION (build $BUILD_NUMBER)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Package**: ${{ env.pkg_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Xcode**: $(xcodebuild -version | head -n 1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Swift**: $(swift --version | head -n 1)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "1. Go to [App Store Connect](https://appstoreconnect.apple.com)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Select your app" >> $GITHUB_STEP_SUMMARY
+          echo "3. Add the build to your release" >> $GITHUB_STEP_SUMMARY
+          echo "4. Submit for review" >> $GITHUB_STEP_SUMMARY

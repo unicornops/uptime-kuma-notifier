@@ -6,10 +6,20 @@
 # Configuration files (user-specific)
 config.toml
 
-# Rust build artifacts
-/target/
-**/*.rs.bk
-Cargo.lock
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+*.xcodeproj/xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+xcuserdata/
 
 # Distribution and packaging
 /dist/
@@ -48,9 +58,6 @@ Temporary Items
 *.swo
 *~
 
-# Python eggs (if any)
-.eggs/
-
 # Logs
 *.log
 logs/
@@ -64,9 +71,3 @@ logs/
 *.bak
 *.backup
 *.old
-
-# Test artifacts
-test_connection
-test_connection.d
-uptime_kuma_notifier
-uptime_kuma_notifier.d

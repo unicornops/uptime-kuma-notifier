@@ -1,0 +1,129 @@
+import Foundation
+import SwiftUI
+
+@Observable
+@MainActor
+final class ServerManager {
+    var servers: [Server] = []
+    var connections: [UUID: ServerConnectionViewModel] = [:]
+
+    private static let serversKey = "savedServers"
+
+    init() {
+        loadServers()
+    }
+
+    // MARK: - Computed Properties
+
+    var totalDownCount: Int {
+        connections.values.reduce(0) { $0 + $1.downCount }
+    }
+
+    var totalUpCount: Int {
+        connections.values.reduce(0) { $0 + $1.upCount }
+    }
+
+    var allOperational: Bool {
+        !servers.isEmpty && totalDownCount == 0 && connections.values.contains(where: { $0.connectionState.isConnected })
+    }
+
+    var hasAnyConnection: Bool {
+        connections.values.contains { $0.connectionState.isConnected }
+    }
+
+    var menuBarSystemImage: String {
+        if servers.isEmpty { return "questionmark.circle" }
+        if !hasAnyConnection { return "network.slash" }
+        if allOperational { return "checkmark.circle.fill" }
+        return "exclamationmark.triangle.fill"
+    }
+
+    var menuBarLabel: String? {
+        let down = totalDownCount
+        if down > 0 { return "\(down)" }
+        return nil
+    }
+
+    // MARK: - Server Management
+
+    func addServer(_ server: Server, password: String) {
+        servers.append(server)
+        try? KeychainService.savePassword(password, for: server.id)
+        saveServers()
+
+        let vm = ServerConnectionViewModel(server: server)
+        connections[server.id] = vm
+        vm.connect()
+    }
+
+    func updateServer(_ server: Server, password: String?) {
+        if let index = servers.firstIndex(where: { $0.id == server.id }) {
+            servers[index] = server
+
+            if let password {
+                try? KeychainService.savePassword(password, for: server.id)
+                try? KeychainService.deleteToken(for: server.id)
+            }
+
+            saveServers()
+
+            // Reconnect with updated config
+            connections[server.id]?.disconnect()
+            let vm = ServerConnectionViewModel(server: server)
+            connections[server.id] = vm
+            vm.connect()
+        }
+    }
+
+    func removeServer(id: UUID) {
+        connections[id]?.disconnect()
+        connections.removeValue(forKey: id)
+        servers.removeAll { $0.id == id }
+        try? KeychainService.deleteAll(for: id)
+        saveServers()
+    }
+
+    func connectAll() {
+        for server in servers {
+            if connections[server.id] == nil {
+                let vm = ServerConnectionViewModel(server: server)
+                connections[server.id] = vm
+            }
+            connections[server.id]?.connect()
+        }
+    }
+
+    func disconnectAll() {
+        for connection in connections.values {
+            connection.disconnect()
+        }
+    }
+
+    func reconnectServer(id: UUID) {
+        guard let server = servers.first(where: { $0.id == id }) else { return }
+        connections[id]?.disconnect()
+        let vm = ServerConnectionViewModel(server: server)
+        connections[id] = vm
+        vm.connect()
+    }
+
+    // MARK: - Persistence
+
+    private func loadServers() {
+        guard let data = UserDefaults.standard.data(forKey: Self.serversKey) else { return }
+        do {
+            servers = try JSONDecoder().decode([Server].self, from: data)
+        } catch {
+            print("Failed to load servers: \(error.localizedDescription)")
+        }
+    }
+
+    private func saveServers() {
+        do {
+            let data = try JSONEncoder().encode(servers)
+            UserDefaults.standard.set(data, forKey: Self.serversKey)
+        } catch {
+            print("Failed to save servers: \(error.localizedDescription)")
+        }
+    }
+}
