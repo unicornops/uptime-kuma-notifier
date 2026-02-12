@@ -1,0 +1,94 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  conventional-commits:
+    name: Check Conventional Commits
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check conventional commits with cocogitto
+        uses: cocogitto/cocogitto-action@v4
+        with:
+          command: check
+          args: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+
+  build:
+    name: Build and Validate
+    runs-on: macos-15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show build environment
+        run: |
+          echo "Xcode version:"
+          xcodebuild -version
+          echo ""
+          echo "Swift version:"
+          swift --version
+          echo ""
+          echo "macOS version:"
+          sw_vers
+
+      - name: Validate project structure
+        run: |
+          echo "Checking Package.swift..."
+          if [ ! -f "Package.swift" ]; then
+            echo "Package.swift not found"
+            exit 1
+          fi
+          echo "Package.swift exists"
+
+          echo ""
+          echo "Checking Info.plist..."
+          if [ ! -f "Info.plist" ]; then
+            echo "Info.plist not found"
+            exit 1
+          fi
+          echo "Info.plist exists"
+
+          echo ""
+          echo "Checking entitlements..."
+          if [ ! -f "UptimeKumaNotifier.entitlements" ]; then
+            echo "UptimeKumaNotifier.entitlements not found"
+            exit 1
+          fi
+          echo "Entitlements file exists"
+
+      - name: Resolve dependencies
+        run: swift package resolve
+
+      - name: Build (Debug)
+        run: swift build -c debug
+
+      - name: Build (Release)
+        run: swift build -c release
+
+      - name: PR validation summary
+        if: always()
+        run: |
+          echo "## PR Validation Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Conventional Commits**: Checked" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build (Debug)**: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Build (Release)**: Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Environment" >> $GITHUB_STEP_SUMMARY
+          echo "- **Xcode**: $(xcodebuild -version | head -n 1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Swift**: $(swift --version | head -n 1)" >> $GITHUB_STEP_SUMMARY
+          echo "- **macOS**: $(sw_vers -productVersion)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Note: This is an unsigned build. Signed builds are only created on merge to main." >> $GITHUB_STEP_SUMMARY
