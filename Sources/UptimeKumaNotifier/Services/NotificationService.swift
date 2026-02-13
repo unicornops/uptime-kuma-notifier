@@ -1,7 +1,30 @@
+import AppKit
 import Foundation
 import UserNotifications
 
+@MainActor
 enum NotificationService {
+    /// Cached URL for the app icon written to a temporary file for notification attachments.
+    private static var appIconURL: URL?
+    private static var appIconResolved = false
+
+    /// Must be called from the main actor to resolve the app icon for notifications.
+    static func resolveAppIcon() {
+        guard !appIconResolved else { return }
+        appIconResolved = true
+        guard let appIcon = NSApplication.shared.applicationIconImage else { return }
+        guard let tiffData = appIcon.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else { return }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("app-icon-notification.png")
+        do {
+            try pngData.write(to: url, options: .atomic)
+            appIconURL = url
+        } catch {
+            // Icon attachment will be skipped
+        }
+    }
+
     static func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if let error {
@@ -42,6 +65,12 @@ enum NotificationService {
 
         content.categoryIdentifier = "STATUS_CHANGE"
         content.threadIdentifier = serverName
+
+        // Attach app icon for LSUIElement (menu bar only) apps
+        if let iconURL = appIconURL,
+           let attachment = try? UNNotificationAttachment(identifier: "app-icon", url: iconURL, options: nil) {
+            content.attachments = [attachment]
+        }
 
         let identifier = "status-\(serverName)-\(monitorName)-\(UUID().uuidString.prefix(8))"
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
