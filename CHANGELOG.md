@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.6.1 - 2026-02-13
+#### Bug Fixes
+- Improve 2FA login flow for Socket.IO connections - (7007e07) - Rob Lazzurs
+
+- - -
+
 ## v0.6.0 - 2026-02-13
 #### Features
 - Add TOTP 2FA support with live code generation - (ee61457) - Rob Lazzurs
