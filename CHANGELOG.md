@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.6.2 - 2026-02-13
+#### Bug Fixes
+- Normalize server URLs to avoid WebSocket origin mismatch - (aa0256d) - Rob Lazzurs
+
+- - -
+
 ## v0.6.1 - 2026-02-13
 #### Bug Fixes
 - Improve 2FA login flow for Socket.IO connections - (7007e07) - Rob Lazzurs
