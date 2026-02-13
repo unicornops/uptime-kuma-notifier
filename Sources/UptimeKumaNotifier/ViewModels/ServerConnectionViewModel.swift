@@ -57,6 +57,10 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         }
     }
 
+    func submitTwoFactorCode(_ code: String) {
+        socketService?.submitTwoFactorCode(code)
+    }
+
     func disconnect() {
         socketService?.disconnect()
         socketService = nil

@@ -10,6 +10,7 @@ struct ServerFormView: View {
     @State private var username: String = ""
     @State private var password: String = ""
     @State private var showingDeleteConfirmation = false
+    @State private var twoFactorCode = ""
 
     private var isNew: Bool { existingServer == nil }
 
@@ -51,6 +52,23 @@ struct ServerFormView: View {
                         LabeledContent("Monitors") {
                             Text("\(connection.monitors.count)")
                                 .font(.caption)
+                        }
+
+                        if case .twoFactorRequired = connection.connectionState {
+                            LabeledContent("2FA Code") {
+                                HStack(spacing: 4) {
+                                    TextField("000000", text: $twoFactorCode)
+                                        .textFieldStyle(.roundedBorder)
+                                        .frame(maxWidth: 80)
+                                        .onSubmit {
+                                            submitTwoFactor(connection: connection)
+                                        }
+                                    Button("Submit") {
+                                        submitTwoFactor(connection: connection)
+                                    }
+                                    .disabled(twoFactorCode.count < 6)
+                                }
+                            }
                         }
                     } header: {
                         Text("Connection")
@@ -116,6 +134,13 @@ struct ServerFormView: View {
         url = server.url
         username = server.username
         password = ""
+    }
+
+    private func submitTwoFactor(connection: ServerConnectionViewModel) {
+        let code = twoFactorCode.trimmingCharacters(in: .whitespaces)
+        guard code.count >= 6 else { return }
+        connection.submitTwoFactorCode(code)
+        twoFactorCode = ""
     }
 
     private func save() {

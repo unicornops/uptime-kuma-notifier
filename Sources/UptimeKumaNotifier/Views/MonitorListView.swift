@@ -4,8 +4,10 @@ struct MonitorListView: View {
     let server: Server
     let connection: ServerConnectionViewModel
     let onReconnect: () -> Void
+    let onSubmitTwoFactor: (String) -> Void
 
     @State private var isExpanded = true
+    @State private var twoFactorCode = ""
 
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
@@ -20,6 +22,27 @@ struct MonitorListView: View {
                         MonitorRowView(monitor: monitor)
                     }
                 }
+            } else if case .twoFactorRequired = connection.connectionState {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Enter 2FA code")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        TextField("000000", text: $twoFactorCode)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption)
+                            .frame(maxWidth: 80)
+                            .onSubmit {
+                                submitTwoFactor()
+                            }
+                        Button("Submit") {
+                            submitTwoFactor()
+                        }
+                        .font(.caption)
+                        .disabled(twoFactorCode.count < 6)
+                    }
+                }
+                .padding(.leading, 8)
             } else {
                 HStack {
                     Text(connection.connectionState.label)
@@ -78,8 +101,17 @@ struct MonitorListView: View {
             .yellow
         case .disconnected:
             .gray
+        case .twoFactorRequired:
+            .yellow
         case .error:
             .red
         }
+    }
+
+    private func submitTwoFactor() {
+        let code = twoFactorCode.trimmingCharacters(in: .whitespaces)
+        guard code.count >= 6 else { return }
+        onSubmitTwoFactor(code)
+        twoFactorCode = ""
     }
 }
