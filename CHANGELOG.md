@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.6.3 - 2026-02-13
+#### Bug Fixes
+- Add ack handling for token login and clear stale tokens - (c6d6cbc) - Rob Lazzurs
+
+- - -
+
 ## v0.6.2 - 2026-02-13
 #### Bug Fixes
 - Normalize server URLs to avoid WebSocket origin mismatch - (aa0256d) - Rob Lazzurs
