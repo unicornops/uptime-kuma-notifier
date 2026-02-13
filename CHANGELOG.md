@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.4.0 - 2026-02-13
+#### Features
+- Add 2FA token support for server authentication - (d330aa3) - Rob Lazzurs
+
+- - -
+
 ## v0.3.0 - 2026-02-13
 #### Features
 - Add 2FA support for server authentication - (729d750) - Rob Lazzurs
