@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.6.0 - 2026-02-13
+#### Features
+- Add TOTP 2FA support with live code generation - (ee61457) - Rob Lazzurs
+
+- - -
+
 ## v0.5.0 - 2026-02-13
 #### Features
 - (**ci**) add custom app and DMG icon to release workflows - (dbb9f15) - Rob Lazzurs
