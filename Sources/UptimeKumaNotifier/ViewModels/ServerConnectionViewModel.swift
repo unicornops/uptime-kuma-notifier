@@ -47,18 +47,28 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         // Try token-based reconnection first, fall back to password
         let token = (try? KeychainService.getToken(for: server.id)) ?? nil
         let password = (try? KeychainService.getPassword(for: server.id)) ?? nil
-        let twoFactorToken = (try? KeychainService.getTwoFactorToken(for: server.id)) ?? nil
 
         if let token, let password {
             service.connectWithToken(token, password: password)
         } else if let password {
-            if let twoFactorToken, !twoFactorToken.isEmpty {
-                service.connectWithTwoFactor(password: password, twoFactorToken: twoFactorToken)
-            } else {
-                service.connect(password: password)
-            }
+            connectWithPassword(service: service, password: password)
         } else {
             connectionState = .error("No credentials found")
+        }
+    }
+
+    /// Connect using password, generating a live TOTP code if a 2FA secret is stored.
+    private func connectWithPassword(service: SocketIOService, password: String) {
+        let twoFactorSecret = (try? KeychainService.getTwoFactorToken(for: server.id)) ?? nil
+
+        if let secret = twoFactorSecret, !secret.isEmpty {
+            if let code = TOTPService.generateCode(secret: secret) {
+                service.connectWithTwoFactor(password: password, twoFactorToken: code)
+            } else {
+                connectionState = .error("Invalid 2FA secret — could not generate code")
+            }
+        } else {
+            service.connect(password: password)
         }
     }
 
@@ -82,6 +92,21 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         if case .error = state {
             try? KeychainService.deleteToken(for: server.id)
         }
+    }
+
+    func socketServiceTokenAuthFailed(_ service: SocketIOService) {
+        // Stale JWT token — clear it and reconnect with password
+        try? KeychainService.deleteToken(for: server.id)
+        service.disconnect()
+
+        guard let password = (try? KeychainService.getPassword(for: server.id)) ?? nil else {
+            connectionState = .error("Token expired and no password available")
+            return
+        }
+
+        let newService = SocketIOService(server: server, delegate: self)
+        self.socketService = newService
+        connectWithPassword(service: newService, password: password)
     }
 
     func socketService(_ service: SocketIOService, didReceiveMonitorList newMonitors: [Int: Monitor]) {
