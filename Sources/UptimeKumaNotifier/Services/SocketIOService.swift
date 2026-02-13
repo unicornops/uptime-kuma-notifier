@@ -174,11 +174,11 @@ final class SocketIOService: @unchecked Sendable {
 
             if let token {
                 self.tokenAuthSucceeded = false
-                socket.emit("loginByToken", token)
+                socket.emitWithAck("loginByToken", token).timingOut(after: 30) { [weak self] data in
+                    self?.handleTokenLoginResponse(data, serverID: serverID)
+                }
 
-                // loginByToken has no ack — if the token is stale the server
-                // silently ignores it. Set a timeout so we can fall back to
-                // password-based auth.
+                // Set a timeout so we can fall back to password-based auth if token auth fails
                 let timeout = DispatchWorkItem { [weak self] in
                     guard let self, !self.tokenAuthSucceeded else { return }
                     Task { @MainActor [weak self] in
@@ -221,6 +221,29 @@ final class SocketIOService: @unchecked Sendable {
 
         socket.on("heartbeat") { [weak self] data, _ in
             self?.handleHeartbeat(data)
+        }
+    }
+
+    private func handleTokenLoginResponse(_ data: [Any], serverID: UUID) {
+        guard let response = data.first as? [String: Any] else {
+            notifyDelegate(state: .error("Invalid token login response"))
+            return
+        }
+
+        let ok = response["ok"] as? Bool ?? false
+
+        if ok {
+            // Token authentication succeeded
+            tokenAuthSucceeded = true
+            tokenAuthTimer?.cancel()
+            tokenAuthTimer = nil
+            notifyDelegate(state: .connected)
+        } else {
+            // Token authentication failed - this will trigger the fallback to password auth
+            let msg = response["msg"] as? String ?? "Token authentication failed"
+            notifyDelegate(state: .error(msg))
+            // Clear the stale token
+            try? KeychainService.deleteToken(for: serverID)
         }
     }
 
