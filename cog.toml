@@ -1,0 +1,27 @@
+from_latest_tag = true
+ignore_merge_commits = true
+disable_changelog = false
+disable_bump_commit = false
+branch_whitelist = []
+skip_ci = "[skip ci]"
+skip_untracked = false
+pre_bump_hooks = []
+post_bump_hooks = [
+    "git push",
+    "git push origin --tags"
+]
+pre_package_bump_hooks = []
+post_package_bump_hooks = []
+monorepo_version_separator = "/"
+tag_prefix = "v"
+
+[git_hooks]
+
+[commit_types]
+chore = { changelog_title = "Chores" }
+
+[changelog]
+path = "CHANGELOG.md"
+authors = []
+
+[bump_profiles]
