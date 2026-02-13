@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     let serverManager: ServerManager
+    @Environment(\.openSettings) private var openSettings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -50,7 +51,7 @@ struct MenuBarView: View {
                 Text("No servers configured")
                     .foregroundStyle(.secondary)
                 Button("Open Settings...") {
-                    openSettings()
+                    openSettingsWindow()
                 }
             }
             .frame(maxWidth: .infinity)
@@ -77,7 +78,7 @@ struct MenuBarView: View {
     private var footerSection: some View {
         HStack {
             Button("Settings...") {
-                openSettings()
+                openSettingsWindow()
             }
             .buttonStyle(.plain)
             Spacer()
@@ -89,8 +90,8 @@ struct MenuBarView: View {
         .padding(.horizontal)
     }
 
-    private func openSettings() {
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    private func openSettingsWindow() {
+        openSettings()
         NSApp.activate(ignoringOtherApps: true)
     }
 }
