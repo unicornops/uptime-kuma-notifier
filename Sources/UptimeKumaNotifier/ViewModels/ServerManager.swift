@@ -7,7 +7,6 @@ final class ServerManager {
     var servers: [Server] = []
     var connections: [UUID: ServerConnectionViewModel] = [:]
     var isRefreshing = false
-    var lastKnownMonitors: [UUID: [Int: Monitor]] = [:]
 
     private static let serversKey = "savedServers"
 
@@ -117,28 +116,27 @@ final class ServerManager {
 
     func reconnectServer(id: UUID) {
         guard let server = servers.first(where: { $0.id == id }) else { return }
+        // Preserve existing monitor data during reconnect
+        let existingMonitors = connections[id]?.monitors ?? [:]
         connections[id]?.disconnect()
-        let vm = ServerConnectionViewModel(server: server)
+        let vm = ServerConnectionViewModel(server: server, existingMonitors: existingMonitors)
         connections[id] = vm
         vm.connect()
     }
 
     func refreshAllServers() {
-        // Store last known monitor data before refreshing
-        for server in servers {
-            lastKnownMonitors[server.id] = connections[server.id]?.monitors ?? [:]
-        }
-
         isRefreshing = true
         for server in servers {
-            // Force reconnect to get fresh data
+            // Preserve existing monitor data during refresh
+            let existingMonitors = connections[server.id]?.monitors ?? [:]
             connections[server.id]?.disconnect()
-            let vm = ServerConnectionViewModel(server: server)
+            // Use convenience initializer to preserve monitor data and set proper connection state
+            let vm = ServerConnectionViewModel(server: server, existingMonitors: existingMonitors)
             connections[server.id] = vm
             vm.connect()
         }
         // Reset refreshing state after a short delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             self.isRefreshing = false
         }
     }
