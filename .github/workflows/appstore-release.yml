@@ -167,6 +167,7 @@ jobs:
 
           cp .build/release/UptimeKumaNotifier "$APP_DIR/Contents/MacOS/"
           cp Info.plist "$APP_DIR/Contents/"
+          cp Assets/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP_DIR/Contents/Info.plist"
           /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP_DIR/Contents/Info.plist"

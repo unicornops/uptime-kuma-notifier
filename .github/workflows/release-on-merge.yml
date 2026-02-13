@@ -192,6 +192,7 @@ jobs:
 
           cp .build/release/UptimeKumaNotifier "$APP_DIR/Contents/MacOS/"
           cp Info.plist "$APP_DIR/Contents/"
+          cp Assets/AppIcon.icns "$APP_DIR/Contents/Resources/AppIcon.icns"
 
           # Update version in Info.plist
           /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP_DIR/Contents/Info.plist"
@@ -247,13 +248,34 @@ jobs:
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           DMG_NAME="UptimeKumaNotifier-${VERSION}.dmg"
+          VOL_NAME="Uptime Kuma Notifier ${VERSION}"
+          TEMP_DMG="dist/UptimeKumaNotifier-${VERSION}-temp.dmg"
 
           hdiutil create \
-            -volname "Uptime Kuma Notifier ${VERSION}" \
+            -volname "$VOL_NAME" \
             -srcfolder dist/UptimeKumaNotifier.app \
-            -ov -format UDZO \
-            "dist/${DMG_NAME}"
+            -ov -format UDRW \
+            "$TEMP_DMG"
 
+          MOUNT_OUTPUT=$(hdiutil attach "$TEMP_DMG")
+          DEVICE=$(echo "$MOUNT_OUTPUT" | awk '/\/Volumes\// {print $1; exit}')
+          MOUNT_POINT=$(echo "$MOUNT_OUTPUT" | awk -F'\t' '/\/Volumes\// {print $3; exit}')
+
+          if [ -z "$DEVICE" ] || [ -z "$MOUNT_POINT" ]; then
+            echo "Failed to determine mounted DMG device or mount point"
+            echo "$MOUNT_OUTPUT"
+            exit 1
+          fi
+
+          cp Assets/AppIcon.icns "$MOUNT_POINT/.VolumeIcon.icns"
+          xcrun SetFile -a C "$MOUNT_POINT"
+          xcrun SetFile -a V "$MOUNT_POINT/.VolumeIcon.icns"
+
+          hdiutil detach "$DEVICE"
+
+          hdiutil convert "$TEMP_DMG" -format UDZO -o "dist/${DMG_NAME}"
+
+          rm -f "$TEMP_DMG"
           echo "dmg_name=${DMG_NAME}" >> $GITHUB_ENV
           echo "DMG created: dist/${DMG_NAME}"
           ls -lh "dist/${DMG_NAME}"
