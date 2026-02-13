@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.9.1 - 2026-02-13
+#### Bug Fixes
+- Release - (d74f1fa) - Rob Lazzurs
+#### Refactoring
+- remove ServerConnectionState.refreshing and update refresh - (3028df4) - Rob Lazzurs
+
+- - -
+
 ## v0.9.0 - 2026-02-13
 #### Features
 - Add refreshing state to server connection handling - (6be3138) - Rob Lazzurs
