@@ -13,6 +13,16 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         self.server = server
     }
 
+    /// Initialize with existing monitor data (used during refresh)
+    convenience init(server: Server, existingMonitors: [Int: Monitor]) {
+        self.init(server: server)
+        self.monitors = existingMonitors
+        // If we have existing monitors, consider the connection as reconnecting
+        if !existingMonitors.isEmpty {
+            self.connectionState = .connecting
+        }
+    }
+
     var upCount: Int {
         monitors.values.filter { $0.active && $0.status == .up }.count
     }

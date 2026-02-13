@@ -97,6 +97,7 @@ final class ServerManager {
     func connectAll() {
         for server in servers {
             if connections[server.id] == nil {
+                // No existing connection, create a new one
                 let vm = ServerConnectionViewModel(server: server)
                 connections[server.id] = vm
             }
@@ -115,8 +116,10 @@ final class ServerManager {
 
     func reconnectServer(id: UUID) {
         guard let server = servers.first(where: { $0.id == id }) else { return }
+        // Preserve existing monitor data during reconnect
+        let existingMonitors = connections[id]?.monitors ?? [:]
         connections[id]?.disconnect()
-        let vm = ServerConnectionViewModel(server: server)
+        let vm = ServerConnectionViewModel(server: server, existingMonitors: existingMonitors)
         connections[id] = vm
         vm.connect()
     }
@@ -124,8 +127,11 @@ final class ServerManager {
     func refreshAllServers() {
         isRefreshing = true
         for server in servers {
+            // Preserve existing monitor data during refresh
+            let existingMonitors = connections[server.id]?.monitors ?? [:]
             connections[server.id]?.disconnect()
-            let vm = ServerConnectionViewModel(server: server)
+            // Use convenience initializer to preserve monitor data and set proper connection state
+            let vm = ServerConnectionViewModel(server: server, existingMonitors: existingMonitors)
             connections[server.id] = vm
             vm.connect()
         }

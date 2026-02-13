@@ -95,17 +95,6 @@ struct MonitorListView: View {
             }
         }
         .padding(.horizontal)
-        .overlay(alignment: .trailing) {
-            if connection.connectionState.isConnected {
-                Button(action: onReconnect) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, 8)
-            }
-        }
     }
 
     @ViewBuilder
@@ -124,15 +113,25 @@ struct MonitorListView: View {
     private var indicatorColor: Color {
         switch connection.connectionState {
         case .connected:
-            connection.downCount > 0 ? .red : .green
+            return connection.downCount > 0 ? .red : .green
         case .connecting, .authenticating:
-            .yellow
+            // If we have monitor data during reconnection, show the appropriate color
+            if !connection.sortedMonitors.isEmpty {
+                return connection.downCount > 0 ? .red : .green
+            } else {
+                return .yellow
+            }
         case .disconnected:
-            .gray
+            // If we have monitor data but are disconnected, show the last known status
+            if !connection.sortedMonitors.isEmpty {
+                return connection.downCount > 0 ? .red : .green
+            } else {
+                return .gray
+            }
         case .twoFactorRequired:
-            .yellow
+            return .yellow
         case .error:
-            .red
+            return .red
         }
     }
 
