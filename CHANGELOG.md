@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.9.0 - 2026-02-13
+#### Features
+- Add refreshing state to server connection handling - (6be3138) - Rob Lazzurs
+
+- - -
+
 ## v0.8.0 - 2026-02-13
 #### Features
 - Preserve monitor data during reconnect and refresh - (18e3d70) - Rob Lazzurs
