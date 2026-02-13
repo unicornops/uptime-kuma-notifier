@@ -3,33 +3,41 @@ import SwiftUI
 struct MonitorListView: View {
     let server: Server
     let connection: ServerConnectionViewModel
+    let serverManager: ServerManager
     let onReconnect: () -> Void
     let onSubmitTwoFactor: (String) -> Void
 
     @State private var isExpanded = true
     @State private var twoFactorCode = ""
 
+    private var monitorsToDisplay: [Int: Monitor] {
+        if serverManager.isRefreshing, let lastKnown = serverManager.lastKnownMonitors[server.id] {
+            return lastKnown
+        }
+        return connection.monitors
+    }
+
+    private var sortedMonitorsToDisplay: [Monitor] {
+        monitorsToDisplay.values
+            .filter { $0.active }
+            .sorted { lhs, rhs in
+                if lhs.status != rhs.status {
+                    return lhs.status.rawValue < rhs.status.rawValue
+                }
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+    }
+
     var body: some View {
         DisclosureGroup(isExpanded: $isExpanded) {
             if connection.connectionState.isConnected {
-                if connection.sortedMonitors.isEmpty {
-                    if connection.connectionState == .connecting || connection.connectionState == .authenticating {
-                        HStack {
-                            ProgressView()
-                                .controlSize(.small)
-                            Text("Loading monitors...")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+                if sortedMonitorsToDisplay.isEmpty {
+                    Text("No monitors")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                         .padding(.leading, 8)
-                    } else {
-                        Text("No monitors")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.leading, 8)
-                    }
                 } else {
-                    ForEach(connection.sortedMonitors) { monitor in
+                    ForEach(sortedMonitorsToDisplay) { monitor in
                         MonitorRowView(monitor: monitor)
                     }
                 }
@@ -103,12 +111,6 @@ struct MonitorListView: View {
             ProgressView()
                 .controlSize(.small)
                 .frame(width: 16, height: 16)
-        } else if connection.connectionState == .refreshing {
-            // Show a refresh indicator during refresh
-            Image(systemName: "arrow.clockwise")
-                .foregroundStyle(indicatorColor)
-                .font(.caption)
-                .frame(width: 16, height: 16)
         } else {
             Circle()
                 .fill(indicatorColor)
@@ -116,27 +118,18 @@ struct MonitorListView: View {
         }
     }
 
+    private var downCountToDisplay: Int {
+        monitorsToDisplay.values.filter { $0.active && $0.status == .down }.count
+    }
+
     private var indicatorColor: Color {
         switch connection.connectionState {
         case .connected:
-            return connection.downCount > 0 ? .red : .green
-        case .refreshing:
-            // During refresh, show the status based on existing monitor data
-            return connection.downCount > 0 ? .red : .green
+            return downCountToDisplay > 0 ? .red : .green
         case .connecting, .authenticating:
-            // If we have monitor data during reconnection, show the appropriate color
-            if !connection.sortedMonitors.isEmpty {
-                return connection.downCount > 0 ? .red : .green
-            } else {
-                return .yellow
-            }
+            return .yellow
         case .disconnected:
-            // If we have monitor data but are disconnected, show the last known status
-            if !connection.sortedMonitors.isEmpty {
-                return connection.downCount > 0 ? .red : .green
-            } else {
-                return .gray
-            }
+            return .gray
         case .twoFactorRequired:
             return .yellow
         case .error:
