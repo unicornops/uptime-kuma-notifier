@@ -49,7 +49,7 @@ final class SocketIOService: @unchecked Sendable {
         let socket = manager.defaultSocket
         self.socket = socket
 
-        setupEventHandlers(socket: socket, password: password)
+        setupEventHandlers(socket: socket, password: password, token: nil, initialTwoFactorToken: nil)
 
         notifyDelegate(state: .connecting)
         socket.connect()
@@ -81,7 +81,7 @@ final class SocketIOService: @unchecked Sendable {
         let socket = manager.defaultSocket
         self.socket = socket
 
-        setupEventHandlers(socket: socket, password: password, token: token)
+        setupEventHandlers(socket: socket, password: password, token: token, initialTwoFactorToken: nil)
 
         notifyDelegate(state: .connecting)
         socket.connect()
@@ -113,7 +113,8 @@ final class SocketIOService: @unchecked Sendable {
         let socket = manager.defaultSocket
         self.socket = socket
 
-        setupEventHandlers(socket: socket, password: password, twoFactorToken: twoFactorToken)
+        // Store the 2FA token for later use if needed
+        setupEventHandlers(socket: socket, password: password, initialTwoFactorToken: twoFactorToken)
 
         notifyDelegate(state: .connecting)
         socket.connect()
@@ -129,7 +130,7 @@ final class SocketIOService: @unchecked Sendable {
         ]
         notifyDelegate(state: .authenticating)
         socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
-            self?.handleLoginResponse(data, serverID: serverID)
+            self?.handleLoginResponse(data, serverID: serverID, availableTwoFactorToken: nil)
         }
     }
 
@@ -145,7 +146,7 @@ final class SocketIOService: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func setupEventHandlers(socket: SocketIOClient, password: String, token: String? = nil, twoFactorToken: String? = nil) {
+    private func setupEventHandlers(socket: SocketIOClient, password: String, token: String? = nil, initialTwoFactorToken: String? = nil) {
         let serverID = serverConfig.id
         let username = serverConfig.username
 
@@ -169,23 +170,16 @@ final class SocketIOService: @unchecked Sendable {
                 }
                 self.tokenAuthTimer = timeout
                 DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: timeout)
-            } else if let twoFactorToken, !twoFactorToken.isEmpty {
-                let loginData: [String: Any] = [
-                    "username": username,
-                    "password": password,
-                    "token": twoFactorToken,
-                ]
-                socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
-                    self?.handleLoginResponse(data, serverID: serverID)
-                }
             } else {
+                // Always start with username/password login (no token initially)
+                // If 2FA is required, the server will respond with tokenRequired: true
                 let loginData: [String: Any] = [
                     "username": username,
                     "password": password,
                     "token": "",
                 ]
                 socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
-                    self?.handleLoginResponse(data, serverID: serverID)
+                    self?.handleLoginResponse(data, serverID: serverID, availableTwoFactorToken: initialTwoFactorToken)
                 }
             }
         }
@@ -212,7 +206,7 @@ final class SocketIOService: @unchecked Sendable {
         }
     }
 
-    private func handleLoginResponse(_ data: [Any], serverID: UUID) {
+    private func handleLoginResponse(_ data: [Any], serverID: UUID, availableTwoFactorToken: String? = nil) {
         guard let response = data.first as? [String: Any] else {
             notifyDelegate(state: .error("Invalid login response"))
             return
@@ -226,7 +220,19 @@ final class SocketIOService: @unchecked Sendable {
             }
             notifyDelegate(state: .connected)
         } else if response["tokenRequired"] as? Bool == true {
-            notifyDelegate(state: .twoFactorRequired)
+            // If we have a 2FA token available, submit it automatically
+            if let twoFactorToken = availableTwoFactorToken, !twoFactorToken.isEmpty {
+                let loginData: [String: Any] = [
+                    "username": serverConfig.username,
+                    "password": storedPassword ?? "",
+                    "token": twoFactorToken,
+                ]
+                socket?.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
+                    self?.handleLoginResponse(data, serverID: serverID)
+                }
+            } else {
+                notifyDelegate(state: .twoFactorRequired)
+            }
         } else {
             let msg = response["msg"] as? String ?? "Authentication failed"
             notifyDelegate(state: .error(msg))
