@@ -185,8 +185,91 @@ enum KeychainService {
         }
     }
 
+    // MARK: - 2FA Token
+
+    static func saveTwoFactorToken(_ token: String, for serverID: UUID) throws {
+        let data = Data(token.utf8)
+        let service = "\(servicePrefix).2fa-token"
+        let account = serverID.uuidString
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+        ]
+
+        let status = SecItemAdd(query as CFDictionary, nil)
+
+        if status == errSecDuplicateItem {
+            let updateQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: account,
+            ]
+            let attributes: [String: Any] = [
+                kSecValueData as String: data,
+            ]
+            let updateStatus = SecItemUpdate(updateQuery as CFDictionary, attributes as CFDictionary)
+            guard updateStatus == errSecSuccess else {
+                throw KeychainError.unexpectedStatus(updateStatus)
+            }
+        } else if status != errSecSuccess {
+            throw KeychainError.unexpectedStatus(status)
+        }
+    }
+
+    static func getTwoFactorToken(for serverID: UUID) throws -> String? {
+        let service = "\(servicePrefix).2fa-token"
+        let account = serverID.uuidString
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+            kSecReturnData as String: true,
+            kSecMatchLimit as String: kSecMatchLimitOne,
+        ]
+
+        var result: AnyObject?
+        let status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        if status == errSecItemNotFound {
+            return nil
+        }
+
+        guard status == errSecSuccess else {
+            throw KeychainError.unexpectedStatus(status)
+        }
+
+        guard let data = result as? Data,
+              let string = String(data: data, encoding: .utf8) else {
+            throw KeychainError.invalidData
+        }
+
+        return string
+    }
+
+    static func deleteTwoFactorToken(for serverID: UUID) throws {
+        let service = "\(servicePrefix).2fa-token"
+        let account = serverID.uuidString
+
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: account,
+        ]
+
+        let status = SecItemDelete(query as CFDictionary)
+        guard status == errSecSuccess || status == errSecItemNotFound else {
+            throw KeychainError.unexpectedStatus(status)
+        }
+    }
+
     static func deleteAll(for serverID: UUID) throws {
         try deletePassword(for: serverID)
         try deleteToken(for: serverID)
+        try deleteTwoFactorToken(for: serverID)
     }
 }
