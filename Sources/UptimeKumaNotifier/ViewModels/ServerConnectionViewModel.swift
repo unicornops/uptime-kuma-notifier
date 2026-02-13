@@ -17,9 +17,9 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
     convenience init(server: Server, existingMonitors: [Int: Monitor]) {
         self.init(server: server)
         self.monitors = existingMonitors
-        // If we have existing monitors, consider the connection as reconnecting
+        // If we have existing monitors, consider the connection as refreshing
         if !existingMonitors.isEmpty {
-            self.connectionState = .connecting
+            self.connectionState = .refreshing
         }
     }
 

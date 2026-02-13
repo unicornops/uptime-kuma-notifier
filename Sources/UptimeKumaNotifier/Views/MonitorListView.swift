@@ -103,6 +103,12 @@ struct MonitorListView: View {
             ProgressView()
                 .controlSize(.small)
                 .frame(width: 16, height: 16)
+        } else if connection.connectionState == .refreshing {
+            // Show a refresh indicator during refresh
+            Image(systemName: "arrow.clockwise")
+                .foregroundStyle(indicatorColor)
+                .font(.caption)
+                .frame(width: 16, height: 16)
         } else {
             Circle()
                 .fill(indicatorColor)
@@ -113,6 +119,9 @@ struct MonitorListView: View {
     private var indicatorColor: Color {
         switch connection.connectionState {
         case .connected:
+            return connection.downCount > 0 ? .red : .green
+        case .refreshing:
+            // During refresh, show the status based on existing monitor data
             return connection.downCount > 0 ? .red : .green
         case .connecting, .authenticating:
             // If we have monitor data during reconnection, show the appropriate color
