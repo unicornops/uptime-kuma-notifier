@@ -33,9 +33,8 @@ struct ServerFormView: View {
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
 
-                TextField("2FA Token (optional)", text: $twoFactorToken)
+                SecureField("2FA Secret (optional)", text: $twoFactorToken)
                     .textFieldStyle(.roundedBorder)
-                    .textContentType(.oneTimeCode)
             } header: {
                 Text(isNew ? "Add Server" : "Edit Server")
                     .font(.headline)

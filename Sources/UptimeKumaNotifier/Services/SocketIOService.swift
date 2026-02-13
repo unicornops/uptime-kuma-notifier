@@ -6,6 +6,7 @@ protocol SocketIOServiceDelegate: AnyObject {
     func socketService(_ service: SocketIOService, didChangeState state: ServerConnectionState)
     func socketService(_ service: SocketIOService, didReceiveMonitorList monitors: [Int: Monitor])
     func socketService(_ service: SocketIOService, didReceiveHeartbeat heartbeat: Heartbeat)
+    func socketServiceTokenAuthFailed(_ service: SocketIOService)
 }
 
 final class SocketIOService: @unchecked Sendable {
@@ -14,6 +15,8 @@ final class SocketIOService: @unchecked Sendable {
     private let serverConfig: Server
     private weak var delegate: (any SocketIOServiceDelegate)?
     private var storedPassword: String?
+    private var tokenAuthTimer: DispatchWorkItem?
+    private var tokenAuthSucceeded = false
 
     init(server: Server, delegate: any SocketIOServiceDelegate) {
         self.serverConfig = server
@@ -131,6 +134,8 @@ final class SocketIOService: @unchecked Sendable {
     }
 
     func disconnect() {
+        tokenAuthTimer?.cancel()
+        tokenAuthTimer = nil
         socket?.disconnect()
         socket?.removeAllHandlers()
         manager?.disconnect()
@@ -149,10 +154,21 @@ final class SocketIOService: @unchecked Sendable {
             self.notifyDelegate(state: .authenticating)
 
             if let token {
-                socket.emit("loginByToken", token) { [weak self] in
-                    // loginByToken doesn't use ack in the same way, we handle via monitorList arrival
-                    _ = self  // prevent unused warning
+                self.tokenAuthSucceeded = false
+                socket.emit("loginByToken", token)
+
+                // loginByToken has no ack — if the token is stale the server
+                // silently ignores it. Set a timeout so we can fall back to
+                // password-based auth.
+                let timeout = DispatchWorkItem { [weak self] in
+                    guard let self, !self.tokenAuthSucceeded else { return }
+                    Task { @MainActor [weak self] in
+                        guard let self, let delegate = self.delegate else { return }
+                        delegate.socketServiceTokenAuthFailed(self)
+                    }
                 }
+                self.tokenAuthTimer = timeout
+                DispatchQueue.main.asyncAfter(deadline: .now() + 10, execute: timeout)
             } else if let twoFactorToken, !twoFactorToken.isEmpty {
                 let loginData: [String: Any] = [
                     "username": username,
@@ -221,6 +237,11 @@ final class SocketIOService: @unchecked Sendable {
 
     private func handleMonitorList(_ data: [Any]) {
         guard let dict = data.first as? [String: Any] else { return }
+
+        // Token auth succeeded — cancel the fallback timer
+        tokenAuthSucceeded = true
+        tokenAuthTimer?.cancel()
+        tokenAuthTimer = nil
 
         var monitors: [Int: Monitor] = [:]
         for (_, value) in dict {
