@@ -13,10 +13,21 @@ struct MonitorListView: View {
         DisclosureGroup(isExpanded: $isExpanded) {
             if connection.connectionState.isConnected {
                 if connection.sortedMonitors.isEmpty {
-                    Text("No monitors")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if connection.connectionState == .connecting || connection.connectionState == .authenticating {
+                        HStack {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Loading monitors...")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
                         .padding(.leading, 8)
+                    } else {
+                        Text("No monitors")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .padding(.leading, 8)
+                    }
                 } else {
                     ForEach(connection.sortedMonitors) { monitor in
                         MonitorRowView(monitor: monitor)
@@ -84,13 +95,30 @@ struct MonitorListView: View {
             }
         }
         .padding(.horizontal)
+        .overlay(alignment: .trailing) {
+            if connection.connectionState.isConnected {
+                Button(action: onReconnect) {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(.trailing, 8)
+            }
+        }
     }
 
     @ViewBuilder
     private var connectionIndicator: some View {
-        Circle()
-            .fill(indicatorColor)
-            .frame(width: 8, height: 8)
+        if connection.connectionState == .connecting || connection.connectionState == .authenticating {
+            ProgressView()
+                .controlSize(.small)
+                .frame(width: 16, height: 16)
+        } else {
+            Circle()
+                .fill(indicatorColor)
+                .frame(width: 8, height: 8)
+        }
     }
 
     private var indicatorColor: Color {

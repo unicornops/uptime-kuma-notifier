@@ -6,6 +6,7 @@ import SwiftUI
 final class ServerManager {
     var servers: [Server] = []
     var connections: [UUID: ServerConnectionViewModel] = [:]
+    var isRefreshing = false
 
     private static let serversKey = "savedServers"
 
@@ -99,7 +100,10 @@ final class ServerManager {
                 let vm = ServerConnectionViewModel(server: server)
                 connections[server.id] = vm
             }
-            connections[server.id]?.connect()
+            // Only connect if not already connected
+            if !connections[server.id]!.connectionState.isConnected {
+                connections[server.id]?.connect()
+            }
         }
     }
 
@@ -115,6 +119,20 @@ final class ServerManager {
         let vm = ServerConnectionViewModel(server: server)
         connections[id] = vm
         vm.connect()
+    }
+
+    func refreshAllServers() {
+        isRefreshing = true
+        for server in servers {
+            connections[server.id]?.disconnect()
+            let vm = ServerConnectionViewModel(server: server)
+            connections[server.id] = vm
+            vm.connect()
+        }
+        // Reset refreshing state after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            self.isRefreshing = false
+        }
     }
 
     // MARK: - Persistence

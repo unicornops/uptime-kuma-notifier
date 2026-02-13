@@ -83,6 +83,17 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             Spacer()
+            if serverManager.hasAnyConnection {
+                Button("Refresh") {
+                    serverManager.refreshAllServers()
+                }
+                .buttonStyle(.plain)
+                if serverManager.isRefreshing {
+                    ProgressView()
+                        .controlSize(.small)
+                        .padding(.leading, 4)
+                }
+            }
             Button("Quit") {
                 NSApplication.shared.terminate(nil)
             }
