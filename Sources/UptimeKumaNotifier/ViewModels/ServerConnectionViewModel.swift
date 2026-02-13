@@ -120,7 +120,20 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
     }
 
     func socketService(_ service: SocketIOService, didReceiveMonitorList newMonitors: [Int: Monitor]) {
-        monitors = newMonitors
+        // Merge with existing data: preserve known statuses and heartbeats
+        // since monitorList only contains metadata, not current heartbeat status
+        var merged = newMonitors
+        for (id, existing) in monitors {
+            if var monitor = merged[id] {
+                // Keep the existing status/heartbeat if the new one is just .pending (default)
+                if monitor.status == .pending && existing.status != .pending {
+                    monitor.status = existing.status
+                    monitor.latestHeartbeat = existing.latestHeartbeat
+                }
+                merged[id] = monitor
+            }
+        }
+        monitors = merged
     }
 
     func socketService(_ service: SocketIOService, didReceiveHeartbeat heartbeat: Heartbeat) {
