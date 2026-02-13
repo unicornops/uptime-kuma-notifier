@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.2.0 - 2026-02-13
+#### Features
+- Ensure Settings window activates app when opened - (d3a74cc) - Rob Lazzurs
+
+- - -
+
 ## v0.1.0 - 2026-02-13
 #### Features
 - Adding cocogitto config - (20b33fb) - Rob Lazzurs
