@@ -33,6 +33,7 @@ struct MonitorRowView: View {
         }
         .padding(.vertical, 2)
         .padding(.leading, 8)
+        .opacity(monitor.active ? 1.0 : 0.6)
     }
 
     private var statusColor: Color {
