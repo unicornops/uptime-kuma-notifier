@@ -23,8 +23,26 @@ final class SocketIOService: @unchecked Sendable {
         self.delegate = delegate
     }
 
+    /// Normalizes a URL by removing standard ports (443 for HTTPS, 80 for HTTP)
+    /// to avoid origin mismatch issues with WebSocket connections
+    private func normalizedWebSocketURL(from urlString: String) -> URL? {
+        guard var urlComponents = URLComponents(string: urlString) else {
+            return nil
+        }
+
+        // Remove standard ports to avoid origin mismatch
+        if let port = urlComponents.port {
+            if (urlComponents.scheme == "https" && port == 443) ||
+               (urlComponents.scheme == "http" && port == 80) {
+                urlComponents.port = nil
+            }
+        }
+
+        return urlComponents.url
+    }
+
     func connect(password: String) {
-        guard let url = URL(string: serverConfig.url) else {
+        guard let url = normalizedWebSocketURL(from: serverConfig.url) else {
             notifyDelegate(state: .error("Invalid server URL"))
             return
         }
@@ -56,7 +74,7 @@ final class SocketIOService: @unchecked Sendable {
     }
 
     func connectWithToken(_ token: String, password: String) {
-        guard let url = URL(string: serverConfig.url) else {
+        guard let url = normalizedWebSocketURL(from: serverConfig.url) else {
             notifyDelegate(state: .error("Invalid server URL"))
             return
         }
@@ -88,7 +106,7 @@ final class SocketIOService: @unchecked Sendable {
     }
 
     func connectWithTwoFactor(password: String, twoFactorToken: String) {
-        guard let url = URL(string: serverConfig.url) else {
+        guard let url = normalizedWebSocketURL(from: serverConfig.url) else {
             notifyDelegate(state: .error("Invalid server URL"))
             return
         }
