@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.5.0 - 2026-02-13
+#### Features
+- (**ci**) add custom app and DMG icon to release workflows - (dbb9f15) - Rob Lazzurs
+
+- - -
+
 ## v0.4.0 - 2026-02-13
 #### Features
 - Add 2FA token support for server authentication - (d330aa3) - Rob Lazzurs
