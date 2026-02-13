@@ -64,7 +64,8 @@ struct MenuBarView: View {
                             MonitorListView(
                                 server: server,
                                 connection: connection,
-                                onReconnect: { serverManager.reconnectServer(id: server.id) }
+                                onReconnect: { serverManager.reconnectServer(id: server.id) },
+                                onSubmitTwoFactor: { code in connection.submitTwoFactorCode(code) }
                             )
                         }
                     }

@@ -13,6 +13,7 @@ final class SocketIOService: @unchecked Sendable {
     private var socket: SocketIOClient?
     private let serverConfig: Server
     private weak var delegate: (any SocketIOServiceDelegate)?
+    private var storedPassword: String?
 
     init(server: Server, delegate: any SocketIOServiceDelegate) {
         self.serverConfig = server
@@ -25,6 +26,7 @@ final class SocketIOService: @unchecked Sendable {
             return
         }
 
+        self.storedPassword = password
         disconnect()
 
         let manager = SocketManager(
@@ -56,6 +58,7 @@ final class SocketIOService: @unchecked Sendable {
             return
         }
 
+        self.storedPassword = password
         disconnect()
 
         let manager = SocketManager(
@@ -79,6 +82,20 @@ final class SocketIOService: @unchecked Sendable {
 
         notifyDelegate(state: .connecting)
         socket.connect()
+    }
+
+    func submitTwoFactorCode(_ code: String) {
+        guard let socket else { return }
+        let serverID = serverConfig.id
+        let loginData: [String: Any] = [
+            "username": serverConfig.username,
+            "password": storedPassword ?? "",
+            "token": code,
+        ]
+        notifyDelegate(state: .authenticating)
+        socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
+            self?.handleLoginResponse(data, serverID: serverID)
+        }
     }
 
     func disconnect() {
@@ -151,6 +168,8 @@ final class SocketIOService: @unchecked Sendable {
                 try? KeychainService.saveToken(token, for: serverID)
             }
             notifyDelegate(state: .connected)
+        } else if response["tokenRequired"] as? Bool == true {
+            notifyDelegate(state: .twoFactorRequired)
         } else {
             let msg = response["msg"] as? String ?? "Authentication failed"
             notifyDelegate(state: .error(msg))

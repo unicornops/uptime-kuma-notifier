@@ -5,6 +5,7 @@ enum ServerConnectionState: Sendable, Equatable {
     case connecting
     case authenticating
     case connected
+    case twoFactorRequired
     case error(String)
 
     var label: String {
@@ -13,6 +14,7 @@ enum ServerConnectionState: Sendable, Equatable {
         case .connecting: "Connecting..."
         case .authenticating: "Authenticating..."
         case .connected: "Connected"
+        case .twoFactorRequired: "2FA Required"
         case .error(let msg): "Error: \(msg)"
         }
     }
