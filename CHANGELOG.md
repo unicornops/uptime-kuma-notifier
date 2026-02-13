@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.7.0 - 2026-02-13
+#### Features
+- Add refresh controls and loading indicators to UI - (5cfe02a) - Rob Lazzurs
+
+- - -
+
 ## v0.6.3 - 2026-02-13
 #### Bug Fixes
 - Add ack handling for token login and clear stale tokens - (c6d6cbc) - Rob Lazzurs
