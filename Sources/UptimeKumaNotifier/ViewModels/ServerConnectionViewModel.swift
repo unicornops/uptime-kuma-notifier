@@ -47,11 +47,16 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         // Try token-based reconnection first, fall back to password
         let token = (try? KeychainService.getToken(for: server.id)) ?? nil
         let password = (try? KeychainService.getPassword(for: server.id)) ?? nil
+        let twoFactorToken = (try? KeychainService.getTwoFactorToken(for: server.id)) ?? nil
 
         if let token, let password {
             service.connectWithToken(token, password: password)
         } else if let password {
-            service.connect(password: password)
+            if let twoFactorToken, !twoFactorToken.isEmpty {
+                service.connectWithTwoFactor(password: password, twoFactorToken: twoFactorToken)
+            } else {
+                service.connect(password: password)
+            }
         } else {
             connectionState = .error("No credentials found")
         }

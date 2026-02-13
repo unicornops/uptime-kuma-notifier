@@ -10,6 +10,7 @@ struct ServerFormView: View {
     @State private var username: String = ""
     @State private var password: String = ""
     @State private var showingDeleteConfirmation = false
+    @State private var twoFactorToken: String = ""
     @State private var twoFactorCode = ""
 
     private var isNew: Bool { existingServer == nil }
@@ -31,6 +32,10 @@ struct ServerFormView: View {
                 SecureField("Password", text: $password)
                     .textFieldStyle(.roundedBorder)
                     .textContentType(.password)
+
+                TextField("2FA Token (optional)", text: $twoFactorToken)
+                    .textFieldStyle(.roundedBorder)
+                    .textContentType(.oneTimeCode)
             } header: {
                 Text(isNew ? "Add Server" : "Edit Server")
                     .font(.headline)
@@ -134,6 +139,7 @@ struct ServerFormView: View {
         url = server.url
         username = server.username
         password = ""
+        twoFactorToken = server.twoFactorToken ?? ""
     }
 
     private func submitTwoFactor(connection: ServerConnectionViewModel) {
@@ -146,20 +152,23 @@ struct ServerFormView: View {
     private func save() {
         let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let trimmedTwoFactorToken = twoFactorToken.trimmingCharacters(in: .whitespaces)
 
         if let existing = existingServer {
             let updated = Server(
                 id: existing.id,
                 name: name.trimmingCharacters(in: .whitespaces),
                 url: trimmedURL,
-                username: username.trimmingCharacters(in: .whitespaces)
+                username: username.trimmingCharacters(in: .whitespaces),
+                twoFactorToken: trimmedTwoFactorToken.isEmpty ? nil : trimmedTwoFactorToken
             )
             serverManager.updateServer(updated, password: password.isEmpty ? nil : password)
         } else {
             let server = Server(
                 name: name.trimmingCharacters(in: .whitespaces),
                 url: trimmedURL,
-                username: username.trimmingCharacters(in: .whitespaces)
+                username: username.trimmingCharacters(in: .whitespaces),
+                twoFactorToken: trimmedTwoFactorToken.isEmpty ? nil : trimmedTwoFactorToken
             )
             serverManager.addServer(server, password: password)
             onDismiss()

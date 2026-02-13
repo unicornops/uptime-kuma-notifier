@@ -84,6 +84,38 @@ final class SocketIOService: @unchecked Sendable {
         socket.connect()
     }
 
+    func connectWithTwoFactor(password: String, twoFactorToken: String) {
+        guard let url = URL(string: serverConfig.url) else {
+            notifyDelegate(state: .error("Invalid server URL"))
+            return
+        }
+
+        self.storedPassword = password
+        disconnect()
+
+        let manager = SocketManager(
+            socketURL: url,
+            config: [
+                .log(false),
+                .compress,
+                .forceWebsockets(true),
+                .reconnects(true),
+                .reconnectWait(5),
+                .reconnectAttempts(-1),
+                .version(.three),
+            ]
+        )
+
+        self.manager = manager
+        let socket = manager.defaultSocket
+        self.socket = socket
+
+        setupEventHandlers(socket: socket, password: password, twoFactorToken: twoFactorToken)
+
+        notifyDelegate(state: .connecting)
+        socket.connect()
+    }
+
     func submitTwoFactorCode(_ code: String) {
         guard let socket else { return }
         let serverID = serverConfig.id
@@ -108,7 +140,7 @@ final class SocketIOService: @unchecked Sendable {
 
     // MARK: - Private
 
-    private func setupEventHandlers(socket: SocketIOClient, password: String, token: String? = nil) {
+    private func setupEventHandlers(socket: SocketIOClient, password: String, token: String? = nil, twoFactorToken: String? = nil) {
         let serverID = serverConfig.id
         let username = serverConfig.username
 
@@ -120,6 +152,15 @@ final class SocketIOService: @unchecked Sendable {
                 socket.emit("loginByToken", token) { [weak self] in
                     // loginByToken doesn't use ack in the same way, we handle via monitorList arrival
                     _ = self  // prevent unused warning
+                }
+            } else if let twoFactorToken, !twoFactorToken.isEmpty {
+                let loginData: [String: Any] = [
+                    "username": username,
+                    "password": password,
+                    "token": twoFactorToken,
+                ]
+                socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
+                    self?.handleLoginResponse(data, serverID: serverID)
                 }
             } else {
                 let loginData: [String: Any] = [

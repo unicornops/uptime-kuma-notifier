@@ -49,6 +49,9 @@ final class ServerManager {
     func addServer(_ server: Server, password: String) {
         servers.append(server)
         try? KeychainService.savePassword(password, for: server.id)
+        if let twoFactorToken = server.twoFactorToken {
+            try? KeychainService.saveTwoFactorToken(twoFactorToken, for: server.id)
+        }
         saveServers()
 
         let vm = ServerConnectionViewModel(server: server)
@@ -63,6 +66,13 @@ final class ServerManager {
             if let password {
                 try? KeychainService.savePassword(password, for: server.id)
                 try? KeychainService.deleteToken(for: server.id)
+            }
+
+            // Handle 2FA token updates
+            if let twoFactorToken = server.twoFactorToken, !twoFactorToken.isEmpty {
+                try? KeychainService.saveTwoFactorToken(twoFactorToken, for: server.id)
+            } else {
+                try? KeychainService.deleteTwoFactorToken(for: server.id)
             }
 
             saveServers()
