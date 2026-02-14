@@ -25,6 +25,28 @@ jobs:
           command: check
           args: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
 
+  # Run pre-commit checks
+  pre-commit:
+    name: Pre-commit Checks
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Install SwiftLint
+        run: brew install swiftlint
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files --show-diff-on-failure
+
   build:
     name: Build and Validate
     runs-on: macos-15
