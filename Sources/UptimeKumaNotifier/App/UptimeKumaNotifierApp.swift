@@ -25,6 +25,5 @@ struct UptimeKumaNotifierApp: App {
 
     init() {
         NotificationService.requestPermission()
-        NotificationService.resolveAppIcon()
     }
 }
