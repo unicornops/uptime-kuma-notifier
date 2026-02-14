@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.10.2 - 2026-02-14
+#### Bug Fixes
+- Make app icon PNG conversion safe for notification attachments - (034048f) - Rob Lazzurs
+
+- - -
+
 ## v0.10.1 - 2026-02-14
 #### Bug Fixes
 - improve app icon resolution for notifications - (de1fc07) - Rob Lazzurs
