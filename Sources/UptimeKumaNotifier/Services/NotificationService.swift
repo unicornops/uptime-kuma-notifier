@@ -2,20 +2,18 @@ import AppKit
 import Foundation
 import UserNotifications
 
-@MainActor
 enum NotificationService {
-    /// URL for the app icon used in notification attachments.
-    /// Locates AppIcon.icns from the app bundle Resources, converts to PNG for UNNotificationAttachment.
-    private static let appIconURL: URL? = {
-        // Find the .icns in the app bundle (placed there by CI build scripts)
+    /// Resolve the app icon PNG URL for notification attachments.
+    /// Looks for AppIcon.icns in the app bundle Resources (placed there by CI build scripts),
+    /// converts to PNG since UNNotificationAttachment requires a supported image format.
+    private nonisolated(unsafe) static var appIconURL: URL? = {
         guard let icnsURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-              let imageSource = CGImageSourceCreateWithURL(icnsURL as CFURL, nil),
-              CGImageSourceGetCount(imageSource) > 0,
-              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+              let image = NSImage(contentsOf: icnsURL),
+              let tiffData = image.tiffRepresentation,
+              let bitmap = NSBitmapImageRep(data: tiffData),
+              let pngData = bitmap.representation(using: .png, properties: [:]) else {
             return nil
         }
-        let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
-        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("app-icon-notification.png")
         do {
             try pngData.write(to: url, options: .atomic)
