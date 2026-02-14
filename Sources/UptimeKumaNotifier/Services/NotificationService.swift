@@ -4,26 +4,26 @@ import UserNotifications
 
 @MainActor
 enum NotificationService {
-    /// Cached URL for the app icon written to a temporary file for notification attachments.
-    private static var appIconURL: URL?
-    private static var appIconResolved = false
-
-    /// Must be called from the main actor to resolve the app icon for notifications.
-    static func resolveAppIcon() {
-        guard !appIconResolved else { return }
-        appIconResolved = true
-        guard let appIcon = NSApplication.shared.applicationIconImage else { return }
-        guard let tiffData = appIcon.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiffData),
-              let pngData = bitmap.representation(using: .png, properties: [:]) else { return }
+    /// URL for the app icon used in notification attachments.
+    /// Locates AppIcon.icns from the app bundle Resources, converts to PNG for UNNotificationAttachment.
+    private static let appIconURL: URL? = {
+        // Find the .icns in the app bundle (placed there by CI build scripts)
+        guard let icnsURL = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let imageSource = CGImageSourceCreateWithURL(icnsURL as CFURL, nil),
+              CGImageSourceGetCount(imageSource) > 0,
+              let cgImage = CGImageSourceCreateImageAtIndex(imageSource, 0, nil) else {
+            return nil
+        }
+        let bitmapRep = NSBitmapImageRep(cgImage: cgImage)
+        guard let pngData = bitmapRep.representation(using: .png, properties: [:]) else { return nil }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("app-icon-notification.png")
         do {
             try pngData.write(to: url, options: .atomic)
-            appIconURL = url
+            return url
         } catch {
-            // Icon attachment will be skipped
+            return nil
         }
-    }
+    }()
 
     static func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
