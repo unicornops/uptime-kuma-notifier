@@ -1,0 +1,112 @@
+# Pre-commit hooks for Github Copilot Notify
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+# To install: pip install pre-commit
+# To set up hooks: pre-commit install
+# To run manually: pre-commit run --all-files
+
+repos:
+  # General file quality checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Prevent committing large files (>500KB)
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+
+      # Ensure files end with a newline
+      - id: end-of-file-fixer
+        exclude: '\.png$|\.jpg$|\.jpeg$|\.gif$|\.svg$|\.icns$|\.car$'
+
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: ["--markdown-linebreak-ext=md"]
+        exclude: '\.patch$'
+
+      # Check for files that would conflict on case-insensitive filesystems
+      - id: check-case-conflict
+
+      # Check for merge conflict markers
+      - id: check-merge-conflict
+
+      # Prevent committing to main branch directly
+      - id: no-commit-to-branch
+        args: ["--branch", "main", "--branch", "master"]
+
+      # Validate JSON files
+      - id: check-json
+
+      # Validate YAML files
+      - id: check-yaml
+        args: ["--allow-multiple-documents"]
+
+      # Check for symlinks that don't point to anything
+      - id: check-symlinks
+
+      # Validate XML files (for plist, xib, etc.)
+      - id: check-xml
+
+  # Swift-specific checks using SwiftLint
+  - repo: https://github.com/realm/SwiftLint
+    rev: 0.62.2
+    hooks:
+      - id: swiftlint
+        name: SwiftLint
+        entry: swiftlint
+        language: system
+        types: [swift]
+        args: ["--fix", "--format"]
+
+  # Markdown linting for documentation
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.47.0
+    hooks:
+      - id: markdownlint
+        name: Markdown Lint
+        args: ["--fix", "--config", ".markdownlint.yaml"]
+        exclude: "CHANGELOG.md"
+
+  # Check for secrets and sensitive data
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        name: Detect Secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: '\.plist$|package-lock\.json$'
+
+  # Shell script validation
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: ShellCheck
+        args: ["--severity=warning"]
+
+  # Local validation hooks
+  - repo: local
+    hooks:
+      # Swift syntax check using swift -frontend -parse
+      # Validates all Swift files can be parsed without errors
+      - id: swift-syntax-check
+        name: Swift Syntax Check
+        entry: bash -c 'for file in $(find UptimeKumaNotifier -name "*.swift" -type f); do if ! swift -frontend -parse "$file" > /dev/null 2>&1; then echo "Syntax error in $file"; swift -frontend -parse "$file"; exit 1; fi; done; echo "All Swift files have valid syntax"'
+        language: system
+        types: [swift]
+        pass_filenames: false
+
+# Configure which files to check
+exclude: |
+  (?x)^(
+      build/|
+      DerivedData/|
+      \.build/|
+      xcuserdata/|
+      \.xcodeproj/xcuserdata/|
+      \.DS_Store|
+      \.swp|
+      \.swo|
+      ~$|
+      CHANGELOG\.md
+  )$

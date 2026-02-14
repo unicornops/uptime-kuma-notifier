@@ -33,7 +33,7 @@ final class SocketIOService: @unchecked Sendable {
         // Remove standard ports to avoid origin mismatch
         if let port = urlComponents.port {
             if (urlComponents.scheme == "https" && port == 443) ||
-               (urlComponents.scheme == "http" && port == 80) {
+                (urlComponents.scheme == "http" && port == 80) {
                 urlComponents.port = nil
             }
         }
@@ -59,7 +59,7 @@ final class SocketIOService: @unchecked Sendable {
                 .reconnects(true),
                 .reconnectWait(5),
                 .reconnectAttempts(-1),
-                .version(.three),
+                .version(.three)
             ]
         )
 
@@ -91,7 +91,7 @@ final class SocketIOService: @unchecked Sendable {
                 .reconnects(true),
                 .reconnectWait(5),
                 .reconnectAttempts(-1),
-                .version(.three),
+                .version(.three)
             ]
         )
 
@@ -123,7 +123,7 @@ final class SocketIOService: @unchecked Sendable {
                 .reconnects(true),
                 .reconnectWait(5),
                 .reconnectAttempts(-1),
-                .version(.three),
+                .version(.three)
             ]
         )
 
@@ -144,7 +144,7 @@ final class SocketIOService: @unchecked Sendable {
         let loginData: [String: Any] = [
             "username": serverConfig.username,
             "password": storedPassword ?? "",
-            "token": code,
+            "token": code
         ]
         notifyDelegate(state: .authenticating)
         socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
@@ -194,7 +194,7 @@ final class SocketIOService: @unchecked Sendable {
                 let loginData: [String: Any] = [
                     "username": username,
                     "password": password,
-                    "token": "",
+                    "token": ""
                 ]
                 socket.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
                     self?.handleLoginResponse(data, serverID: serverID, availableTwoFactorToken: initialTwoFactorToken)
@@ -266,7 +266,7 @@ final class SocketIOService: @unchecked Sendable {
                 let loginData: [String: Any] = [
                     "username": serverConfig.username,
                     "password": storedPassword ?? "",
-                    "token": twoFactorToken,
+                    "token": twoFactorToken
                 ]
                 socket?.emitWithAck("login", loginData).timingOut(after: 30) { [weak self] data in
                     self?.handleLoginResponse(data, serverID: serverID)

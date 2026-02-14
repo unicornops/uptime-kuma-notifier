@@ -33,7 +33,7 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -42,10 +42,10 @@ enum KeychainService {
             let updateQuery: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
-                kSecAttrAccount as String: account,
+                kSecAttrAccount as String: account
             ]
             let attributes: [String: Any] = [
-                kSecValueData as String: data,
+                kSecValueData as String: data
             ]
             let updateStatus = SecItemUpdate(updateQuery as CFDictionary, attributes as CFDictionary)
             guard updateStatus == errSecSuccess else {
@@ -65,7 +65,7 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
@@ -94,7 +94,7 @@ enum KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -115,7 +115,7 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -124,10 +124,10 @@ enum KeychainService {
             let updateQuery: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
-                kSecAttrAccount as String: account,
+                kSecAttrAccount as String: account
             ]
             let attributes: [String: Any] = [
-                kSecValueData as String: data,
+                kSecValueData as String: data
             ]
             let updateStatus = SecItemUpdate(updateQuery as CFDictionary, attributes as CFDictionary)
             guard updateStatus == errSecSuccess else {
@@ -147,7 +147,7 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
@@ -176,7 +176,7 @@ enum KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -197,7 +197,7 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock,
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlock
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -206,10 +206,10 @@ enum KeychainService {
             let updateQuery: [String: Any] = [
                 kSecClass as String: kSecClassGenericPassword,
                 kSecAttrService as String: service,
-                kSecAttrAccount as String: account,
+                kSecAttrAccount as String: account
             ]
             let attributes: [String: Any] = [
-                kSecValueData as String: data,
+                kSecValueData as String: data
             ]
             let updateStatus = SecItemUpdate(updateQuery as CFDictionary, attributes as CFDictionary)
             guard updateStatus == errSecSuccess else {
@@ -229,7 +229,7 @@ enum KeychainService {
             kSecAttrService as String: service,
             kSecAttrAccount as String: account,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
+            kSecMatchLimit as String: kSecMatchLimitOne
         ]
 
         var result: AnyObject?
@@ -258,7 +258,7 @@ enum KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: account,
+            kSecAttrAccount as String: account
         ]
 
         let status = SecItemDelete(query as CFDictionary)
