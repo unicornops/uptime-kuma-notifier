@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## v0.10.0 - 2026-02-14
+#### Features
+- (**notification**) show app icon in native notifications - (b526b44) - Rob Lazzurs
+
+- - -
+
 ## v0.9.2 - 2026-02-13
 #### Bug Fixes
 - Revert "refactor: remove ServerConnectionState.refreshing and update refresh" - (5f45128) - Rob Lazzurs
