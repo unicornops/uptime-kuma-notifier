@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 
 @Observable
 @MainActor
@@ -9,9 +10,17 @@ final class ServerManager {
     var isRefreshing = false
 
     private static let serversKey = "savedServers"
+    private nonisolated(unsafe) var sleepWakeObserver: NSObjectProtocol?
 
     init() {
         loadServers()
+        setupSleepWakeObserver()
+    }
+
+    deinit {
+        if let observer = sleepWakeObserver {
+            NSWorkspace.shared.notificationCenter.removeObserver(observer)
+        }
     }
 
     // MARK: - Computed Properties
@@ -138,6 +147,22 @@ final class ServerManager {
         // Reset refreshing state after a short delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
             self.isRefreshing = false
+        }
+    }
+
+    // MARK: - Sleep/Wake
+
+    private func setupSleepWakeObserver() {
+        sleepWakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didWakeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                // Brief delay to allow the network to re-establish after wake
+                try? await Task.sleep(for: .seconds(3))
+                self?.refreshAllServers()
+            }
         }
     }
 

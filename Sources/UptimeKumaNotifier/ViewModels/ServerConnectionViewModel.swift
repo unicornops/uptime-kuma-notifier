@@ -8,6 +8,12 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
     var monitors: [Int: Monitor] = [:]
 
     private var socketService: SocketIOService?
+    private var lastDataReceivedDate: Date?
+    private var connectionStartDate: Date?
+    private var watchdogTask: Task<Void, Never>?
+
+    private static let staleConnectionTimeout: TimeInterval = 180  // 3 minutes
+    private static let watchdogCheckInterval: TimeInterval = 60    // Check every minute
 
     init(server: Server) {
         self.server = server
@@ -51,20 +57,11 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
     }
 
     func connect() {
-        let service = SocketIOService(server: server, delegate: self)
-        self.socketService = service
-
-        // Try token-based reconnection first, fall back to password
-        let token = (try? KeychainService.getToken(for: server.id)) ?? nil
-        let password = (try? KeychainService.getPassword(for: server.id)) ?? nil
-
-        if let token, let password {
-            service.connectWithToken(token, password: password)
-        } else if let password {
-            connectWithPassword(service: service, password: password)
-        } else {
-            connectionState = .error("No credentials found")
-        }
+        lastDataReceivedDate = nil
+        connectionStartDate = nil
+        socketService?.disconnect()
+        socketService = nil
+        startConnection()
     }
 
     /// Connect using password, generating a live TOTP code if a 2FA secret is stored.
@@ -82,11 +79,32 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         }
     }
 
+    /// Creates a new SocketIOService and initiates a connection using stored credentials.
+    private func startConnection() {
+        let service = SocketIOService(server: server, delegate: self)
+        self.socketService = service
+
+        // Try token-based reconnection first, fall back to password
+        let token = (try? KeychainService.getToken(for: server.id)) ?? nil
+        let password = (try? KeychainService.getPassword(for: server.id)) ?? nil
+
+        if let token, let password {
+            service.connectWithToken(token, password: password)
+        } else if let password {
+            connectWithPassword(service: service, password: password)
+        } else {
+            connectionState = .error("No credentials found")
+        }
+    }
+
     func submitTwoFactorCode(_ code: String) {
         socketService?.submitTwoFactorCode(code)
     }
 
     func disconnect() {
+        stopWatchdog()
+        lastDataReceivedDate = nil
+        connectionStartDate = nil
         socketService?.disconnect()
         socketService = nil
         connectionState = .disconnected
@@ -98,9 +116,18 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
     func socketService(_ service: SocketIOService, didChangeState state: ServerConnectionState) {
         connectionState = state
 
-        // If auth failed, clear token so next attempt uses password
-        if case .error = state {
+        switch state {
+        case .connected:
+            connectionStartDate = Date()
+            startWatchdog()
+        case .disconnected:
+            stopWatchdog()
+        case .error:
+            // If auth failed, clear token so next attempt uses password
             try? KeychainService.deleteToken(for: server.id)
+            stopWatchdog()
+        default:
+            break
         }
     }
 
@@ -108,18 +135,19 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         // Stale JWT token — clear it and reconnect with password
         try? KeychainService.deleteToken(for: server.id)
         service.disconnect()
+        socketService = nil
 
-        guard let password = (try? KeychainService.getPassword(for: server.id)) ?? nil else {
+        guard (try? KeychainService.getPassword(for: server.id)) ?? nil != nil else {
             connectionState = .error("Token expired and no password available")
             return
         }
 
-        let newService = SocketIOService(server: server, delegate: self)
-        self.socketService = newService
-        connectWithPassword(service: newService, password: password)
+        // Token deleted above, so startConnection() will fall through to password auth
+        startConnection()
     }
 
     func socketService(_ service: SocketIOService, didReceiveMonitorList newMonitors: [Int: Monitor]) {
+        lastDataReceivedDate = Date()
         // Merge with existing data: preserve known statuses and heartbeats
         // since monitorList only contains metadata, not current heartbeat status
         var merged = newMonitors
@@ -137,6 +165,7 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
     }
 
     func socketService(_ service: SocketIOService, didReceiveHeartbeat heartbeat: Heartbeat) {
+        lastDataReceivedDate = Date()
         guard var monitor = monitors[heartbeat.monitorID] else { return }
 
         let oldStatus = monitor.status
@@ -154,5 +183,54 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
                 newStatus: newStatus
             )
         }
+    }
+
+    // MARK: - Connection Watchdog
+
+    private func startWatchdog() {
+        watchdogTask?.cancel()
+        watchdogTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(ServerConnectionViewModel.watchdogCheckInterval))
+                guard !Task.isCancelled else { break }
+                self?.checkConnectionHealth()
+            }
+        }
+    }
+
+    private func stopWatchdog() {
+        watchdogTask?.cancel()
+        watchdogTask = nil
+    }
+
+    private func checkConnectionHealth() {
+        guard connectionState.isConnected else { return }
+
+        let now = Date()
+        let timeout = Self.staleConnectionTimeout
+
+        let isStale: Bool
+        if let lastData = lastDataReceivedDate {
+            isStale = now.timeIntervalSince(lastData) > timeout
+        } else if let connectedSince = connectionStartDate {
+            isStale = now.timeIntervalSince(connectedSince) > timeout
+        } else {
+            isStale = false
+        }
+
+        if isStale {
+            reconnectStale()
+        }
+    }
+
+    private func reconnectStale() {
+        stopWatchdog()
+        lastDataReceivedDate = nil
+        connectionStartDate = nil
+
+        socketService?.disconnect()
+        socketService = nil
+
+        startConnection()
     }
 }
