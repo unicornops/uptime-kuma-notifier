@@ -46,7 +46,7 @@ swift run                # Build and run
 
 - **All commits must use conventional commit format**
   (e.g., `feat:`, `fix:`, `chore:`, `ci:`, `docs:`)
-- Versioning is handled by cocogitto from conventional commits
+- Versioning and changelog management are handled by release-please
 - Follow Apple platform best practices (SwiftUI, Keychain,
   UserNotifications, app sandbox)
 - No third-party dependencies beyond Socket.IO client — use system frameworks
@@ -54,10 +54,10 @@ swift run                # Build and run
 
 ## CI/CD
 
-- **PR validation**: conventional commit check + debug/release builds
+- **PR validation**: semantic PR title check + debug/release builds
   (`pr-validation.yml`)
-- **Release on merge**: cocogitto auto-version, signed + notarized app bundle,
-  DMG/ZIP GitHub Release (`release-on-merge.yml`)
+- **Release on merge**: release-please automation, signed + notarized app bundle,
+  DMG/ZIP GitHub Release assets (`release-on-merge.yml`)
 - **App Store**: manual dispatch, builds .pkg and uploads to App Store Connect
   (`appstore-release.yml`)
 

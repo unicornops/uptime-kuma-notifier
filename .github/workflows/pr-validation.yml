@@ -3,7 +3,7 @@ name: PR Validation
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened]
+    types: [opened, synchronize, reopened, edited]
 
 permissions:
   contents: read
@@ -11,19 +11,13 @@ permissions:
 
 jobs:
   conventional-commits:
-    name: Check Conventional Commits
+    name: Check Conventional PR Title
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-
-      - name: Check conventional commits with cocogitto
-        uses: cocogitto/cocogitto-action@v4
-        with:
-          command: check
-          args: ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+      - name: Validate PR title
+        uses: amannn/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Run pre-commit checks
   pre-commit:
@@ -104,7 +98,7 @@ jobs:
         run: |
           echo "## PR Validation Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Conventional Commits**: Checked" >> $GITHUB_STEP_SUMMARY
+          echo "- **Conventional PR Title**: Checked" >> $GITHUB_STEP_SUMMARY
           echo "- **Build (Debug)**: Completed" >> $GITHUB_STEP_SUMMARY
           echo "- **Build (Release)**: Completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY

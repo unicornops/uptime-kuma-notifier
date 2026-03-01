@@ -5,114 +5,41 @@ on:
     branches:
       - main
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Version to release (e.g., 1.2.3 or leave empty for auto-bump)"
-        required: false
-        type: string
 
 permissions:
   id-token: write
   contents: write
   packages: write
+  pull-requests: write
 
 jobs:
-  release:
-    name: Create Release
+  release-please:
+    name: Release Please
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: simple
+          package-name: uptime-kuma-notifier
+
+  build-and-publish:
+    name: Build, Sign, Notarize, and Publish Artifacts
     runs-on: macos-15
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at release tag
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Configure git for bot commits
-        run: |
-          git config user.name "GitHubActions"
-          git config user.email "github@unicornops.ie"
-
-      - name: Determine version strategy
-        id: version_strategy
-        run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.version }}" ]; then
-            echo "strategy=manual" >> $GITHUB_OUTPUT
-            echo "Manual version specified: ${{ inputs.version }}"
-          else
-            echo "strategy=auto" >> $GITHUB_OUTPUT
-            echo "Auto-bump version from conventional commits"
-          fi
-
-      - name: Check for conventional commits
-        if: steps.version_strategy.outputs.strategy == 'auto'
-        uses: cocogitto/cocogitto-action@v4
-        with:
-          command: check
-          args: --from-latest-tag
-        continue-on-error: true
-
-      - name: Get next version
-        if: steps.version_strategy.outputs.strategy == 'auto'
-        id: next_version
-        run: |
-          NEXT_VERSION=$(cog bump --auto --dry-run 2>&1 || echo "none")
-          if [ "$NEXT_VERSION" == "none" ] || echo "$NEXT_VERSION" | grep -q "No conventional commits"; then
-            echo "No new version to bump - no conventional commits found"
-            echo "next_version=none" >> $GITHUB_OUTPUT
-            exit 1
-          fi
-          echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-          echo "Next version will be: $NEXT_VERSION"
-
-      - name: Cocogitto bump
-        if: steps.version_strategy.outputs.strategy == 'auto' && steps.next_version.outputs.next_version != 'none'
-        id: bump_auto
-        uses: cocogitto/cocogitto-action@v4
-        with:
-          command: bump
-          args: --auto
-          git-user: "GitHubActions"
-          git-user-email: "github@unicornops.ie"
-
-      - name: Create manual version tag
-        if: steps.version_strategy.outputs.strategy == 'manual'
-        id: bump_manual
-        run: |
-          VERSION="${{ inputs.version }}"
-          if [[ ! "$VERSION" =~ ^v ]]; then
-            VERSION="v${VERSION}"
-          fi
-          echo "Creating manual tag: $VERSION"
-          git tag -a "$VERSION" -m "chore(release): $VERSION"
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-
-      - name: Set bump output
-        id: bump
-        run: |
-          if [ "${{ steps.version_strategy.outputs.strategy }}" == "manual" ]; then
-            echo "version=${{ steps.bump_manual.outputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${{ steps.bump_auto.outputs.version }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Push tags
-        run: git push --follow-tags
-
-      - name: Generate changelog for release
-        run: |
-          VERSION="${{ steps.bump.outputs.version }}"
-          if [ "${{ steps.version_strategy.outputs.strategy }}" == "manual" ]; then
-            echo "# Manual Release" > GITHUB_CHANGELOG.md
-            echo "" >> GITHUB_CHANGELOG.md
-            echo "## Recent Changes" >> GITHUB_CHANGELOG.md
-            echo "" >> GITHUB_CHANGELOG.md
-            cog changelog --at "$VERSION" -t full_hash >> GITHUB_CHANGELOG.md 2>&1 || \
-            git log --pretty=format:"- %s (%h)" $(git describe --tags --abbrev=0 2>/dev/null || echo HEAD~10)..HEAD >> GITHUB_CHANGELOG.md
-          else
-            cog changelog --at "$VERSION" -t full_hash > GITHUB_CHANGELOG.md
-          fi
+          ref: ${{ needs.release-please.outputs.tag_name }}
 
       - name: Show build environment
         run: |
@@ -128,10 +55,17 @@ jobs:
       - name: Set version for build
         id: version
         run: |
-          VERSION="${{ steps.bump.outputs.version }}"
-          VERSION="${VERSION#v}"
+          VERSION="${{ needs.release-please.outputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION="${{ needs.release-please.outputs.tag_name }}"
+            VERSION="${VERSION#v}"
+          fi
+
+          TAG="${{ needs.release-please.outputs.tag_name }}"
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
+          echo "Using tag: $TAG"
 
       - name: Build release binary
         run: swift build -c release
@@ -306,26 +240,25 @@ jobs:
             security delete-keychain "$KEYCHAIN_NAME" 2>/dev/null || true
           fi
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.bump.outputs.version }}
-          body_path: GITHUB_CHANGELOG.md
-          files: |
-            dist/${{ env.dmg_name }}
-            dist/${{ env.zip_name }}
-            dist/checksums.txt
-          draft: false
-          prerelease: false
+      - name: Upload artifacts to GitHub release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          gh release upload "$TAG" \
+            "dist/${{ env.dmg_name }}" \
+            "dist/${{ env.zip_name }}" \
+            "dist/checksums.txt" \
+            --clobber
 
       - name: Release summary
         run: |
           VERSION="${{ steps.version.outputs.version }}"
+          TAG="${{ steps.version.outputs.tag }}"
           echo "## Release Build Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- **Version**: ${{ steps.bump.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tag**: $TAG" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
           echo "- **Xcode**: $(xcodebuild -version | head -n 1)" >> $GITHUB_STEP_SUMMARY
           echo "- **Swift**: $(swift --version | head -n 1)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
