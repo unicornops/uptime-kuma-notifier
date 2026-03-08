@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.0.2](https://github.com/unicornops/uptime-kuma-notifier/compare/v1.0.1...v1.0.2) (2026-03-08)
+
+
+### Bug Fixes
+
+* Suppress notifications for initial pending→up transitions ([#43](https://github.com/unicornops/uptime-kuma-notifier/issues/43)) ([724c26a](https://github.com/unicornops/uptime-kuma-notifier/commit/724c26af19623a4e6c4b81dbcc20708c2cbc6392))
+
 ## [1.0.1](https://github.com/unicornops/uptime-kuma-notifier/compare/v1.0.0...v1.0.1) (2026-03-08)
 
 
