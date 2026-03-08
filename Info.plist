@@ -3,6 +3,8 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
     <key>CFBundleExecutable</key>
     <string>UptimeKumaNotifier</string>
     <key>CFBundleIdentifier</key>
@@ -35,5 +37,7 @@
     <true/>
     <key>NSSupportsSuddenTermination</key>
     <false/>
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024-2026 UnicornOps. All rights reserved.</string>
 </dict>
 </plist>
