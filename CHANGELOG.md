@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.1.0](https://github.com/unicornops/uptime-kuma-notifier/compare/v1.0.2...v1.1.0) (2026-03-08)
+
+
+### Features
+
+* add PrivacyInfo.xcprivacy and update Info.plist for App Store ([#45](https://github.com/unicornops/uptime-kuma-notifier/issues/45)) ([6a89bd8](https://github.com/unicornops/uptime-kuma-notifier/commit/6a89bd8a234c08f2ce85a5c60608b7c968dee188))
+
 ## [1.0.2](https://github.com/unicornops/uptime-kuma-notifier/compare/v1.0.1...v1.0.2) (2026-03-08)
 
 
