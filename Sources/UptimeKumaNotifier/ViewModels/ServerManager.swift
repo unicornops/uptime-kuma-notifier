@@ -10,11 +10,12 @@ final class ServerManager {
     var isRefreshing = false
 
     private static let serversKey = "savedServers"
-    private nonisolated(unsafe) var sleepWakeObserver: NSObjectProtocol?
+    @ObservationIgnored private nonisolated(unsafe) var sleepWakeObserver: NSObjectProtocol?
 
     init() {
         loadServers()
         setupSleepWakeObserver()
+        connectAll()
     }
 
     deinit {

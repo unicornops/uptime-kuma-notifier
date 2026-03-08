@@ -175,7 +175,10 @@ final class ServerConnectionViewModel: SocketIOServiceDelegate {
         monitor.latestHeartbeat = heartbeat
         monitors[heartbeat.monitorID] = monitor
 
-        if oldStatus != newStatus {
+        // Only notify on real status changes. Skip pending→up transitions since
+        // pending is the initial default state: the service was already up when we connected.
+        let isInitialUpTransition = oldStatus == .pending && newStatus == .up
+        if oldStatus != newStatus && !isInitialUpTransition {
             NotificationService.sendStatusChange(
                 monitorName: monitor.name,
                 serverName: server.name,
