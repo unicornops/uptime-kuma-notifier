@@ -2,6 +2,13 @@
 All notable changes to this project will be documented in this file. See [conventional commits](https://www.conventionalcommits.org/) for commit guidelines.
 
 - - -
+## [1.1.1](https://github.com/unicornops/uptime-kuma-notifier/compare/v1.1.0...v1.1.1) (2026-03-20)
+
+
+### Bug Fixes
+
+* add Applications link to dmg ([#48](https://github.com/unicornops/uptime-kuma-notifier/issues/48)) ([5cc5d47](https://github.com/unicornops/uptime-kuma-notifier/commit/5cc5d47cf8ff1b004df9799500e661109c791839))
+
 ## [1.1.0](https://github.com/unicornops/uptime-kuma-notifier/compare/v1.0.2...v1.1.0) (2026-03-08)
 
 
